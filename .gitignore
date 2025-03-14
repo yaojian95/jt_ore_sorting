@@ -34,3 +34,12 @@ MANIFEST
 *.spec
 
 *.fits
+
+*.pkl
+*.npy
+*.npz
+*.h5
+*.hdf5
+*.csv
+*.json
+*.log
