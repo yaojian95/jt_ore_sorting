@@ -35,7 +35,7 @@ def find_closest_point(scrap_rates, recovery_rates, target= [20, 95]):
     :param recovery_rates: 回收率列表
     :param target: 目标回收率
 
-    :return: 最接近目标回收率的抛废率
+    :return: 最接近目标回收率的抛废率, and indexes
 
     '''
     scrap_rates = np.array(scrap_rates)
@@ -44,8 +44,8 @@ def find_closest_point(scrap_rates, recovery_rates, target= [20, 95]):
     min_index_scrap = np.argmin(np.abs(scrap_rates - target[0]))
     min_index_recovery = np.argmin(np.abs(recovery_rates - target[1]))
 
-    closest_scrap = [scrap_rates[min_index_scrap], recovery_rates[min_index_scrap]]
-    closest_recovery = [scrap_rates[min_index_recovery], recovery_rates[min_index_recovery]]
+    closest_scrap = [min_index_scrap, scrap_rates[min_index_scrap], recovery_rates[min_index_scrap]]
+    closest_recovery = [min_index_recovery, scrap_rates[min_index_recovery], recovery_rates[min_index_recovery]]
     return [closest_scrap, closest_recovery]
 
 

@@ -5,6 +5,7 @@ Used to load raw png data and laboratory results (if any).
     low and high energy images; 
     true (laboratory) results;
 
+- Add function to show the distribution of the grade
 created on 2025-03-20
 
 '''
@@ -25,10 +26,9 @@ def split_dual_xray_image(image, offset_up=0, offset_down=0):
 
 # 定义 load_data 函数
 def load_data(
-        pixel_file: str,
-        date: str,
-        annotation_file: str
-) -> Tuple[pd.DataFrame, pd.Series]:
+        pixel_file,
+        date,
+        annotation_file == None):
     """
     加载并预处理像素数据和注释数据。
 
@@ -41,6 +41,15 @@ def load_data(
         - ann (pd.DataFrame): 预处理后的注释 DataFrame。
         - pixels (pd.Series): 预处理后的像素 Series。
     """
+
+    if pixel_file is not str:
+        pixels = pixel_file
+    else:
+        # 加载像素数据
+        with open(pixel_file, 'rb') as f:
+            pixels_data = pickle.load(f)
+        pixels = pd.Series(pixels_data[date]['low'][:len(ann.iloc[:,0])])
+
     try:
         # 加载注释数据
         ann = pd.read_excel(annotation_file)
@@ -52,11 +61,6 @@ def load_data(
             'S': "S_grade",
             'Weight(g)': "weight"
         }, inplace=True)
-        
-        # 加载像素数据
-        with open(pixel_file, 'rb') as f:
-            pixels_data = pickle.load(f)
-        pixels = pd.Series(pixels_data[date]['low'][:len(ann.iloc[:,0])])
 
         # 处理缺失数据
         none_indexes = pixels[pixels.isnull()].index.tolist()
