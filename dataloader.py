@@ -28,7 +28,7 @@ def split_dual_xray_image(image, offset_up=0, offset_down=0):
 def load_data(
         pixel_file,
         date,
-        annotation_file == None):
+        annotation_file = None):
     """
     加载并预处理像素数据和注释数据。
 
