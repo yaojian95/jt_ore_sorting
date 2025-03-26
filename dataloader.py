@@ -17,7 +17,27 @@ import logging
 from typing import Tuple
 from preprocessing import draw_contours_yao, get_contours
 import cv2
-import matplotlib.pyplot as plt
+from utils import append_generic
+
+
+def list_depth(lst):
+    """
+    此函数用于计算列表的深度
+
+    参数:
+    lst (list): 要计算深度的列表
+
+    返回:
+    int: 列表的深度
+    """
+    if not isinstance(lst, list):
+        return 0
+    if not lst:
+        return 1
+    # 递归计算每个子列表的深度
+    depths = [list_depth(item) for item in lst]
+    # 取最大深度并加 1 得到当前列表的深度
+    return max(depths) + 1
 
 def split_dual_xray_image(image, offset_up=0, offset_down=0):
     # Split the image into low and high energy parts
@@ -27,12 +47,12 @@ def split_dual_xray_image(image, offset_up=0, offset_down=0):
 
     return low_power_image, high_power_image
 
-def prepare_R(path, roi, max_len = 6, length = 100, s_i = 0, direction = 'ublr', th_val = 105,
-                save_rock_image = False):
+def path2pixel(path, roi, max_len = 6, length = 100, s_i = 0, direction = 'ublr', th_val = 105,
+                save_rock_image = False, save_rock_pixels = False):
     '''
     return low, high, rock_pixels, low_contoured, contours
     '''
-        
+    
     image = cv2.imread(path, cv2.IMREAD_GRAYSCALE) 
     # cv2.IMREAD_GRAYSCALE 或 0， 转换为0-255的灰度图
     # cv2.IMREAD_COLOR 或 1，转换为3通道的彩色图
@@ -42,65 +62,149 @@ def prepare_R(path, roi, max_len = 6, length = 100, s_i = 0, direction = 'ublr',
 
     low, high = low.T, high.T # 先转置回来
 
-    y1, y2, x1, x2 = roi
-
-    low, high = cv2.flip(low[y1:y2, x1:x2], 0), cv2.flip(high[y1:y2, x1:x2], 0) 
-    # 先选择感兴趣区域
-    # X射线探测器成像与实际矿石摆放位置（俯视）差180°且左右相反
-    # 等效为沿着垂直方向翻转
-
-    low_contoured, rock_pixels, contours = get_contours(low, high, th_val = th_val, max_len = max_len, length=length, 
+    if list_depth(roi) == 1:
+        y1, y2, x1, x2 = roi
+        low_roi, high_roi = cv2.flip(low[y1:y2, x1:x2], 0), cv2.flip(high[y1:y2, x1:x2], 0) 
+        # 先选择感兴趣区域
+        # X射线探测器成像与实际矿石摆放位置（俯视）差180°且左右相反
+        # 等效为沿着垂直方向翻转
+        low_contoured, rock_pixels, contours = get_contours(low_roi, high_roi, th_val = th_val, max_len = max_len, length=length, 
                                               direction = direction, path = path, s_i = s_i, save_rock_image=save_rock_image)
 
-    return low, high, rock_pixels, low_contoured, contours
+        pre_combined = low_roi, high_roi, rock_pixels, low_contoured, contours
+    
+    elif list_depth(roi) == 2:
 
-# 定义 load_data 函数
-def load_data(
-        pixel_file,
-        date,
-        annotation_file = None):
-    """
-    加载并预处理像素数据和注释数据。
+        # two set of stones in one image
+        pre = []
+        assert len(max_len) == len(s_i) == len(roi) == len(length), "roi, max_len, s_i, length should have the same length"
 
-    参数:
-    - pixel_file (str): 包含像素数据的 pickle 文件路径。
-    - annotation_file (str): 包含注释数据的 Excel 文件路径。
+        for p in range(len(roi)):
+            y1, y2, x1, x2 = roi[p]
+            low_roi, high_roi = cv2.flip(low[y1:y2, x1:x2], 0), cv2.flip(high[y1:y2, x1:x2], 0)
+            # print(low)
+            low_contoured, rock_pixels, contours = get_contours(low_roi, high_roi, th_val = th_val, max_len = max_len[p], length=length[p], 
+                                              direction = direction, path = path, s_i = s_i[p], save_rock_image=save_rock_image)
 
-    返回:
-    - Tuple 包含:
-        - ann (pd.DataFrame): 预处理后的注释 DataFrame。
-        - pixels (pd.Series): 预处理后的像素 Series。
-    """
+            pre.append([low_roi, high_roi, rock_pixels, low_contoured, contours])
+        
+        pre_combined =[append_generic(pre[1][i], pre[0][i]) for i in range(len(pre[0]))]
 
+    if save_rock_pixels:
+        date = path.split('/')[-2]
+
+        if list_depth(roi) == 1:
+            date = date + '_part'
+
+        pixel_data = {
+            date: {
+                'low': pre_combined[2][0],
+                'high': pre_combined[2][1]
+                    },
+}
+        with open('%s_pixels.pkl'%date, 'wb') as f:
+            pickle.dump(pixel_data, f)
+
+    logging.info(f"{list_depth(roi)}个盒子的图像转换rock_pixels完成。")
+
+    return pre_combined
+
+def path2truth(path):
+    '''
+    Returns:
+    -------
+    - true_results: pd.DataFrame
+    
+    '''
+    # 加载注释数据
+    ann = pd.read_excel(path)
+    ann = ann.loc[:, ~ann.columns.str.contains('^Unnamed')]
+    ann.rename(columns={
+        'Fe': "Fe_grade",
+        'Zn': "Zn_grade",
+        'Pb': "Pb_grade",
+        'S': "S_grade",
+        'Weight(g)': "weight"
+    }, inplace=True)
+
+    # 处理缺失数据
+    # none_indexes = pixels[pixels.isnull()].index.tolist()
+    missing_indexes = ann[ann.isnull().any(axis=1)].index.tolist()
+    indexes_to_remove = set(missing_indexes)
+    # indexes_to_remove = set(none_indexes).union(missing_indexes)
+    # pixels = pixels.drop(indexes_to_remove)
+    ann = ann.drop(indexes_to_remove)
+
+    logging.info(f"加载数据完成。清洗后的样本数量: {len(ann)}")
+
+    return ann, ann.iloc[:, 0]
+
+def load_data(pixel_file, truth_path):
+    '''
+    '''
     if pixel_file is not str:
-        pixels = pixel_file
+        pixels_data = pixel_file
     else:
         # 加载像素数据
         with open(pixel_file, 'rb') as f:
             pixels_data = pickle.load(f)
-        pixels = pd.Series(pixels_data[date]['low'][:len(ann.iloc[:,0])])
+            
+    pixels = pd.Series(pixels_data)
 
-    try:
-        # 加载注释数据
-        ann = pd.read_excel(annotation_file)
-        ann = ann.loc[:, ~ann.columns.str.contains('^Unnamed')]
-        ann.rename(columns={
-            'Fe': "Fe_grade",
-            'Zn': "Zn_grade",
-            'Pb': "Pb_grade",
-            'S': "S_grade",
-            'Weight(g)': "weight"
-        }, inplace=True)
+    true_results, rock_ids = path2truth(truth_path)
 
-        # 处理缺失数据
-        none_indexes = pixels[pixels.isnull()].index.tolist()
-        missing_indexes = ann[ann.isnull().any(axis=1)].index.tolist()
-        indexes_to_remove = set(none_indexes).union(missing_indexes)
-        pixels = pixels.drop(indexes_to_remove)
-        ann = ann.drop(indexes_to_remove)
+    pixels = pixels.iloc[rock_ids - 1]
 
-        logging.info(f"加载数据完成。清洗后的样本数量: {len(ann)}")
-        return ann, pixels
-    except Exception as e:
-        logging.error(f"加载数据时出错: {e}")
-        raise
+    return pixels, true_results
+
+
+# # 定义 load_data 函数
+# def load_data(
+#         pixel_file,
+#         date = None,
+#         annotation_file = None):
+#     """
+#     加载并预处理像素数据和注释数据。
+
+#     参数:
+#     - pixel_file (str): 包含像素数据的 pickle 文件路径。
+#     - annotation_file (str): 包含注释数据的 Excel 文件路径。
+
+#     返回:
+#     - Tuple 包含:
+#         - ann (pd.DataFrame): 预处理后的注释 DataFrame。
+#         - pixels (pd.Series): 预处理后的像素 Series。
+#     """
+
+#     if pixel_file is not str:
+#         pixels = pixel_file
+#     else:
+#         # 加载像素数据
+#         with open(pixel_file, 'rb') as f:
+#             pixels_data = pickle.load(f)
+#         pixels = pd.Series(pixels_data[date]['low'][:len(ann.iloc[:,0])])
+
+#     try:
+#         # 加载注释数据
+#         ann = pd.read_excel(annotation_file)
+#         ann = ann.loc[:, ~ann.columns.str.contains('^Unnamed')]
+#         ann.rename(columns={
+#             'Fe': "Fe_grade",
+#             'Zn': "Zn_grade",
+#             'Pb': "Pb_grade",
+#             'S': "S_grade",
+#             'Weight(g)': "weight"
+#         }, inplace=True)
+
+#         # 处理缺失数据
+#         none_indexes = pixels[pixels.isnull()].index.tolist()
+#         missing_indexes = ann[ann.isnull().any(axis=1)].index.tolist()
+#         indexes_to_remove = set(none_indexes).union(missing_indexes)
+#         pixels = pixels.drop(indexes_to_remove)
+#         ann = ann.drop(indexes_to_remove)
+
+#         logging.info(f"加载数据完成。清洗后的样本数量: {len(ann)}")
+#         return ann, pixels
+#     except Exception as e:
+#         logging.error(f"加载数据时出错: {e}")
+#         raise
