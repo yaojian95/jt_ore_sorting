@@ -96,14 +96,15 @@ def path2pixel(path, roi, max_len = 6, length = 100, s_i = 0, direction = 'ublr'
         if list_depth(roi) == 1:
             date = date + '_part'
 
-        pixel_data = {
-            date: {
-                'low': pre_combined[2][0],
-                'high': pre_combined[2][1]
-                    },
-}
+        # pixel_data = {
+        #     date: {
+        #         'low': pre_combined[2][0],
+        #         'high': pre_combined[2][1]
+        #             },
+        #             }
+        
         with open('%s_pixels.pkl'%date, 'wb') as f:
-            pickle.dump(pixel_data, f)
+            pickle.dump(pre_combined[2], f)
 
     logging.info(f"{list_depth(roi)}个盒子的图像转换rock_pixels完成。")
 
@@ -141,6 +142,10 @@ def path2truth(path):
 
 def load_data(pixel_file, truth_path):
     '''
+    Returns:
+    -------
+    - pixels_full: list of low and high energy pixels, pd.Series
+    - true_results: pd.DataFrame
     '''
     if pixel_file is not str:
         pixels_data = pixel_file
@@ -148,14 +153,12 @@ def load_data(pixel_file, truth_path):
         # 加载像素数据
         with open(pixel_file, 'rb') as f:
             pixels_data = pickle.load(f)
-            
-    pixels = pd.Series(pixels_data)
 
     true_results, rock_ids = path2truth(truth_path)
 
-    pixels = pixels.iloc[rock_ids - 1]
+    pixels_full = [pd.Series(rock).iloc[rock_ids - 1] for rock in pixels_data]
 
-    return pixels, true_results
+    return pixels_full, true_results
 
 
 # # 定义 load_data 函数

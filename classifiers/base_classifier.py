@@ -266,7 +266,7 @@ class BaseClassifier(ABC):
             # scrap_rates_ideal, recovery_rates_ideal, grade_thresholds_ideal = self.compute_ideal_curve()
             # scrap_rates_baseline, recovery_rates_baseline, grade_thresholds_baseline = self.compute_baseline_curve()
             res_dict['ideal'] = self.compute_ideal_curve()
-            res_dict['baseline'] = self.compute_baseline_curve()
+            res_dict['baseline'] = self.compute_baseline_curve() # 定义在dual_thresh.py 里面。 
             scrap_rates_ideal = res_dict['ideal'][0]
             recovery_rates_ideal = res_dict['ideal'][1]
 
