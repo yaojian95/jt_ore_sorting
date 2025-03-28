@@ -79,7 +79,7 @@ class DualThreshClassifier(BaseClassifier):
         threshold_A_steps = A_range  # “灰度阈值”从 0 到 255，步长为 step_A
         threshold_B_steps = np.arange(0, 1.01, step_B)  # “比例阈值”从 0.0 到 1.0，步长为 step_B
 
-        logging.info("开始进行超参数调优...")
+        # logging.info("开始进行超参数调优...")
         for I_th in threshold_A_steps:
             for ratio_th in threshold_B_steps:
                 predictions = self.classify_ores(I_th, ratio_th)

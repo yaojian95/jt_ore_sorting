@@ -1,2 +1,2 @@
-from .r_method import RMethodClassifier, R_from_path
+from .r_method import RMethodClassifier
 from .dual_thresh import DualThreshClassifier

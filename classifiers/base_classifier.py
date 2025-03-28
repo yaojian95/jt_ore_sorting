@@ -176,7 +176,7 @@ class BaseClassifier(ABC):
 
         return auc_results
 
-    def find_closest_point(self, target_recovery: float) -> Optional[Tuple[float, float]]:
+    def find_closest_point_1(self, target_recovery: float) -> Optional[Tuple[float, float]]:
         """
         找到回收率最接近目标回收率的抛废率。
 
@@ -199,6 +199,27 @@ class BaseClassifier(ABC):
         closest_scrap = scrap_rates[min_index]
         closest_recovery = recovery_rates[min_index]
         return closest_scrap, closest_recovery
+    
+    def find_closest_point(self, target= [0.2, 0.95]):
+        '''
+        找到回收率最接近目标回收率的抛废率， 或者最接近目标抛废率的回收率。
+
+        :param scrap_rates: 抛废率列表
+        :param recovery_rates: 回收率列表
+        :param target: 目标回收率
+
+        :return: 最接近目标回收率的抛废率, and indexes
+
+        '''
+        scrap_rates = np.array(self.pareto_front['抛废率'].values)
+        recovery_rates = np.array(self.pareto_front['回收率'].values)
+        
+        min_index_scrap = np.argmin(np.abs(scrap_rates - target[0]))
+        min_index_recovery = np.argmin(np.abs(recovery_rates - target[1]))
+
+        closest_scrap = [min_index_scrap, scrap_rates[min_index_scrap], recovery_rates[min_index_scrap]]
+        closest_recovery = [min_index_recovery, scrap_rates[min_index_recovery], recovery_rates[min_index_recovery]]
+        return [closest_scrap, closest_recovery]
 
 
     def report_closest_scrap_rate(self, target_recovery: float) -> Optional[Tuple[float, float]]:
@@ -322,22 +343,23 @@ class BaseClassifier(ABC):
             logging.warning("没有可用的 Pareto 前沿来识别最佳点。")
 
         # 找到最接近目标回收率的点
-        target_recovery = 0.95
-        closest_point = self.find_closest_point(target_recovery)
+        # target_recovery = 0.95
+        closest_point = self.find_closest_point(target = [0.2, 0.95])
 
         # 获取 closest_point 对应的 灰度阈值 和 比例阈值
         if closest_point:
-            print(f"\n=== 95%回收率指标 ===")
-            scrap, recovery = closest_point
-            matching_rows = pareto_front[
-                (pareto_front['抛废率'] == scrap) & (pareto_front['回收率'] == recovery)
-            ]
-            if not matching_rows.empty:
-                closest_threshold_A = matching_rows.iloc[0]['threshold_A']
-                closest_threshold_B = matching_rows.iloc[0]['threshold_B']
-                print(f"当回收率约为 {recovery * 100:.2f}% 时，抛废率为 {scrap * 100:.2f}%。此时的灰度阈值为{closest_threshold_A}，比例阈值为{closest_threshold_B * 100:.2f}%。")
-            else:
-                print(f"当回收率约为 {recovery * 100:.2f}% 时，抛废率为 {scrap * 100:.2f}%。阈值信息不可用。")
+            print(f"\n=== 20%抛废率和95%回收率指标 ===")
+            for point in closest_point:
+                id, scrap, recovery = point
+                matching_rows = pareto_front[
+                    (pareto_front['抛废率'] == scrap) & (pareto_front['回收率'] == recovery)
+                ]
+                if not matching_rows.empty:
+                    closest_threshold_A = matching_rows.iloc[0]['threshold_A']
+                    closest_threshold_B = matching_rows.iloc[0]['threshold_B']
+                    print(f"当回收率约为 {recovery * 100:.2f}% 时，抛废率为 {scrap * 100:.2f}%。此时的灰度阈值为{closest_threshold_A}，比例阈值为{closest_threshold_B * 100:.2f}%。")
+                else:
+                    print(f"当回收率约为 {recovery * 100:.2f}% 时，抛废率为 {scrap * 100:.2f}%。阈值信息不可用。")
         else:
             print("未找到符合条件的抛废率和回收率。")
         

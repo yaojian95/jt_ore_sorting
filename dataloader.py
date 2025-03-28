@@ -136,6 +136,7 @@ def path2truth(path):
     # pixels = pixels.drop(indexes_to_remove)
     ann = ann.drop(indexes_to_remove)
 
+    ann.index = ann.iloc[:, 0].values - 1
     logging.info(f"加载数据完成。清洗后的样本数量: {len(ann)}")
 
     return ann, ann.iloc[:, 0]
