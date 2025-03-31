@@ -1,38 +1,79 @@
-# classifiers/dual_thresh.py
-from .base_classifier import BaseClassifier
-import logging
-from typing import Tuple, Dict, Optional
+# BaselineOreGrading.py
+
 import numpy as np
 import pandas as pd
+import logging
+import pickle
+from typing import Tuple, Dict, Optional
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 
-class DualThreshClassifier(BaseClassifier):
-    def __init__(self, pixels, pixel_kind = 'grayness', truth = None, include_Fe = False):
-        '''
-        初始化 DualThreshClassifier 类。
+
+# 配置日志
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+
+class BaselineOreGrading:
+    """
+    BaselineOreGrading 是一个用于执行基线矿石分级的类，通过基于抛废率和回收率的超参数调优进行优化。
+    """
+
+    def __init__(self, ann: pd.DataFrame, pixels: pd.Series, pixel_kind = 'grayness'):
+        """
+        初始化 BaselineOreGrading 类。
+
         参数:
-        - pixels: 矿石的像素数据。
-        - ground_truth: 真实的分类结果（可选）。
-        - pixel_kind: 输入的是灰度图还是R值图, 默认为 'grayness', grayness or R, 不同的图对应的分选逻辑不一样。
-
-        '''
-        super().__init__(name = 'Dual_thresh', pixels = pixels, truth = truth, include_Fe=include_Fe)
+        - ann (pd.DataFrame): 包含矿石信息的注释数据。必须包含 'weight'、'Pb_grade'、'Zn_grade' 列。
+        - pixels (pd.Series): 每个矿石的像素数据，以列表或数组形式。
+        - pixel_kind (str): 像素数据的类型，可以是 'grayness' 或 'R'。
+        """
+        self.data = ann
+        self.pixels = pixels
+        self.weight = self.data['weight']
+        self.pb_grade = self.data['Pb_grade'] / 100
+        self.zn_grade = self.data['Zn_grade'] / 100
+        self.y = self.pb_grade + self.zn_grade  # 综合品位
         self.pixel_kind = pixel_kind
 
-    def classify_ores(self, I_th, ratio_th):
+        # 初始化用于调优结果的存储列表
+        self.tuning_results = []
 
+        # 存储满足约束条件的最佳点
+        self.best_under_constraints = None
+
+        # 设置 Matplotlib 使用支持中文的字体
+        self._set_chinese_font()
+
+    def _set_chinese_font(self):
+        """
+        设置 Matplotlib 使用支持中文的字体。
+        优先使用 SimHei；如果不可用，则使用其他中文字体。
+        """
+        chinese_fonts = ['SimHei', 'WenQuanYi Zen Hei', 'Noto Sans CJK SC', 'Microsoft YaHei', 'PingFang SC']
+        available_fonts = [f.name for f in fm.fontManager.ttflist]
+        for font in chinese_fonts:
+            if font in available_fonts:
+                plt.rcParams['font.sans-serif'] = [font]
+                break
+        else:
+            plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']  # 默认字体
+            logging.warning("指定的中文字体未找到。使用默认字体。")
+        plt.rcParams['axes.unicode_minus'] = False  # 修正负号显示
+
+    def classify_ores(self, I_th: int, ratio_th: float) -> np.ndarray:
         """
         基于“灰度阈值”和“比例阈值”将矿石分类为高品位 (1) 或低品位 (0)。
         对于灰度图, 平均像素值高意味着品位低；
         对于R值图, 平均像素值高意味着品位高。
 
-        Parameters
-        ----------
-        :param I_th: 灰度阈值 (int): 像素低于该值的阈值。
-        :param ratio_th: 比例阈值 (float): 像素低于“灰度阈值”的比例阈值。
+        参数:
+        - I_th, 灰度阈值 (int): 像素低于该值的阈值。
+        - ratio_th, 比例阈值 (float): 像素低于“灰度阈值”的比例阈值。
+        - input (str): 输入的是灰度图还是R值图, grayness or R, 不同的图对应的分选逻辑不一样。
 
-        Returns
-        ----------
-        :return: 预测结果数组（1 表示高品位，0 表示低品位）。
+        返回:
+        - np.ndarray: 预测结果数组（1 表示高品位，0 表示低品位）。
         """
         try:
             # 计算每个样本的低像素比例
@@ -46,7 +87,49 @@ class DualThreshClassifier(BaseClassifier):
             logging.error(f"分类时出错: {e}")
             return np.zeros(len(self.pixels))  # 若出错，则默认全部为低品位
 
-    def tuning(
+    def calculate_tuning_metrics(self, predictions: np.ndarray) -> Dict[str, float]:
+        """
+        计算用于超参数调优的指标，与品位阈值无关。
+
+        参数:
+        - predictions (np.ndarray): 预测结果数组（1 表示高品位，0 表示低品位）。
+
+        返回:
+        - Dict[str, float]: 包含调优指标的字典。
+        """
+        high_grade_mask = predictions == 1
+        low_grade_mask = predictions == 0
+
+        # 计算抛废率和回收率
+        scrap_rate = self.weight[low_grade_mask].sum() / self.weight.sum()
+        recovery_rate = (self.weight[high_grade_mask] * self.y[high_grade_mask]).sum() / (self.weight * self.y).sum()
+
+        # 计算富集率
+        avg_pb_grade_all = self.pb_grade.mean()
+        avg_zn_grade_all = self.zn_grade.mean()
+        avg_pb_grade_high = np.nan_to_num(self.pb_grade[high_grade_mask].mean())
+        avg_zn_grade_high = np.nan_to_num(self.zn_grade[high_grade_mask].mean())
+        avg_pb_grade_low = np.nan_to_num(self.pb_grade[low_grade_mask].mean())
+        avg_zn_grade_low = np.nan_to_num(self.zn_grade[low_grade_mask].mean())
+
+        enrichment_Pb = avg_pb_grade_high / avg_pb_grade_all if avg_pb_grade_all != 0 else 0
+        enrichment_Zn = avg_zn_grade_high / avg_zn_grade_all if avg_zn_grade_all != 0 else 0
+
+        return {
+            '抛废率': scrap_rate,
+            '回收率': recovery_rate,
+            '铅富集比': enrichment_Pb,
+            '锌富集比': enrichment_Zn,
+            '铅平均品位（保留）': avg_pb_grade_high,
+            '锌平均品位（保留）': avg_zn_grade_high,
+            '铅平均品位（抛废）': avg_pb_grade_low,
+            '锌平均品位（抛废）': avg_zn_grade_low,
+            '铅平均品位': avg_pb_grade_all,
+            '锌平均品位': avg_zn_grade_all,
+        }
+
+
+    def hyperparameter_tuning(
             self,
             min_recovery_rate: Optional[float] = None,
             min_scrap_rate: Optional[float] = None,
@@ -67,11 +150,6 @@ class DualThreshClassifier(BaseClassifier):
             - best_params (Optional[Tuple[int, float]]): 优化目标的 (“灰度阈值”, “比例阈值”)。
             - best_metrics (Optional[Dict[str, float]]): 与 best_params 对应的指标。
         """
-
-        assert self.truth is not None, "ground_truth is required in tuning mode"
-        self.tuning_results = []  # 存储调优结果的列表
-        self.best_under_constraints = None
-
         best_metrics = None
         best_params = None
         best_score = -np.inf  # 初始化为负无穷，用于最大化
@@ -79,7 +157,7 @@ class DualThreshClassifier(BaseClassifier):
         threshold_A_steps = A_range  # “灰度阈值”从 0 到 255，步长为 step_A
         threshold_B_steps = np.arange(0, 1.01, step_B)  # “比例阈值”从 0.0 到 1.0，步长为 step_B
 
-        # logging.info("开始进行超参数调优...")
+        logging.info("开始进行超参数调优...")
         for I_th in threshold_A_steps:
             for ratio_th in threshold_B_steps:
                 predictions = self.classify_ores(I_th, ratio_th)
@@ -141,49 +219,8 @@ class DualThreshClassifier(BaseClassifier):
         self.best_params = best_params
         self.best_metrics = best_metrics
 
-        # return best_params, best_metrics
-    
-    def calculate_tuning_metrics(self, predictions: np.ndarray) -> Dict[str, float]:
-        """
-        计算用于超参数调优的指标，与品位阈值无关。
+        return best_params, best_metrics
 
-        参数:
-        - predictions (np.ndarray): 预测结果数组（1 表示高品位，0 表示低品位）。
-
-        返回:
-        - Dict[str, float]: 包含调优指标的字典。
-        """
-        high_grade_mask = predictions == 1
-        low_grade_mask = predictions == 0
-
-        # 计算抛废率和回收率
-        scrap_rate = self.weight[low_grade_mask].sum() / self.weight.sum()
-        recovery_rate = (self.weight[high_grade_mask] * self.y[high_grade_mask]).sum() / (self.weight * self.y).sum()
-
-        # 计算富集率
-        avg_pb_grade_all = self.pb_grade.mean()
-        avg_zn_grade_all = self.zn_grade.mean()
-        avg_pb_grade_high = np.nan_to_num(self.pb_grade[high_grade_mask].mean())
-        avg_zn_grade_high = np.nan_to_num(self.zn_grade[high_grade_mask].mean())
-        avg_pb_grade_low = np.nan_to_num(self.pb_grade[low_grade_mask].mean())
-        avg_zn_grade_low = np.nan_to_num(self.zn_grade[low_grade_mask].mean())
-
-        enrichment_Pb = avg_pb_grade_high / avg_pb_grade_all if avg_pb_grade_all != 0 else 0
-        enrichment_Zn = avg_zn_grade_high / avg_zn_grade_all if avg_zn_grade_all != 0 else 0
-
-        return {
-            '抛废率': scrap_rate,
-            '回收率': recovery_rate,
-            '铅富集比': enrichment_Pb,
-            '锌富集比': enrichment_Zn,
-            '铅平均品位（保留）': avg_pb_grade_high,
-            '锌平均品位（保留）': avg_zn_grade_high,
-            '铅平均品位（抛废）': avg_pb_grade_low,
-            '锌平均品位（抛废）': avg_zn_grade_low,
-            '铅平均品位': avg_pb_grade_all,
-            '锌平均品位': avg_zn_grade_all,
-        }
-    
     def _compute_pareto_front(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         计算 Pareto 前沿。

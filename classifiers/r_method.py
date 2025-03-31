@@ -22,11 +22,12 @@ class RMethodClassifier(BaseClassifier):
     def __init__(self):
         super().__init__()
 
-    def __init__(self, pixels, truth = None, I0_low = 195, I0_high = 196, input = 'pixels', method = 'a', const = [5, 20]):
+    def __init__(self, pixels, truth = None, I0_low = 195, I0_high = 196, input = 'pixels', method = 'a', 
+                 const = [5, 20], include_Fe = False):
         '''
         初始化RMethodClassifier类。
         '''
-        super().__init__(name = 'R_method', pixels = pixels, truth = truth)
+        super().__init__(name = 'R_method', pixels = pixels, truth = truth, include_Fe=include_Fe)
         
         self.R_pixels = self.compute_R(self.pixels[0], self.pixels[1], I0_low, I0_high, input = input, method= method, const=const)
         # self.pixel_kind = pixel_kind
@@ -43,7 +44,7 @@ class RMethodClassifier(BaseClassifier):
                A_range = np.arange(0.5, 1.2, 0.01), 
                step_B= 0.05):
         
-        test = DualThreshClassifier(truth = self.truth, pixels= self.R_pixels, pixel_kind= 'R')
+        test = DualThreshClassifier(truth = self.truth, pixels= self.R_pixels, pixel_kind= 'R', include_Fe=self.include_Fe)
         test.tuning(min_recovery_rate=min_recovery_rate, min_scrap_rate=min_scrap_rate, A_range=A_range, step_B=step_B)
 
         return test
