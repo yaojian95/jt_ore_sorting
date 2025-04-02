@@ -1,7 +1,7 @@
 # classifiers/dual_thresh.py
 from .base_classifier import BaseClassifier
 import logging
-from typing import Tuple, Dict, Optional
+from typing import Optional
 import numpy as np
 import pandas as pd
 
@@ -48,11 +48,11 @@ class DualThreshClassifier(BaseClassifier):
 
     def tuning(
             self,
-            min_recovery_rate: Optional[float] = None,
-            min_scrap_rate: Optional[float] = None,
+            min_recovery_rate = None,
+            min_scrap_rate = None,
             A_range = np.arange(0, 256, 5), 
             step_B: float = 0.05, 
-    ) -> Tuple[Optional[Tuple[int, float]], Optional[Dict[str, float]]]:
+    ):
         """
         调优超参数以找到基于指定约束条件的最佳“灰度阈值”和“比例阈值”。
 
@@ -143,7 +143,7 @@ class DualThreshClassifier(BaseClassifier):
 
         # return best_params, best_metrics
     
-    def _compute_pareto_front(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _compute_pareto_front(self, df):
         """
         计算 Pareto 前沿。
 
@@ -164,35 +164,3 @@ class DualThreshClassifier(BaseClassifier):
                 current_max_scrap = row['抛废率']
 
         return pd.DataFrame(pareto_front)
-
-    def compute_baseline_curve(self) -> Tuple[list, list, list]:
-        """
-        基于按平均像素值降序(即品位升序)排序计算基线曲线。对于灰度图，平均像素值高意味着品位低；
-        对于R值图, 平均像素值高意味着品位高。
-
-        返回:
-        - Tuple 包含:
-            - scrap_rates_baseline (list): 基线抛废率。
-            - recovery_rates_baseline (list): 基线回收率。
-            - grade_thresholds_baseline (list): 与每个基线点对应的品位阈值。
-        """
-        # 计算每个矿石的平均像素值
-        mean_pixel_values = self.pixels.apply(np.mean)
-
-        if self.pixel_kind == 'grayness':
-            # 按平均像素值降序排序（平均像素值高意味着品位低）
-            sorted_indices = mean_pixel_values.sort_values(ascending=False).index
-        elif self.pixel_kind == 'R':
-            # 按平均像素值升序排序（平均像素值高意味着品位高）
-            sorted_indices = mean_pixel_values.sort_values(ascending=True).index
-        else:
-            raise ValueError("无效的 pixel_kind 值。请使用 'grayness' 或 'R'。")
-
-        # 将索引标签转换为位置索引
-        sorted_positions = self.weight.index.get_indexer(sorted_indices)
-        if (sorted_positions == -1).any():
-            raise ValueError("一个或多个排序后的索引在 self.weight 中未找到。")
-
-        scrap_rates_baseline, recovery_rates_baseline, grade_thresholds_baseline = self._compute_rates(sorted_positions)
-
-        return scrap_rates_baseline, recovery_rates_baseline, grade_thresholds_baseline

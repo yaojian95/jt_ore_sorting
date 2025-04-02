@@ -95,13 +95,13 @@ class RMethodClassifier(BaseClassifier):
 
             return pd.Series(R_values, index=low.index)
     
-    def R_from_path(low, high, rock_pixels, I0_low, I0_high, input = 'images', method = 'a', const = [5, 20]):
-        '''return (R_pixels) R_images, low, high, rock_pixels'''
+    # def R_from_path(low, high, rock_pixels, I0_low, I0_high, input = 'images', method = 'a', const = [5, 20]):
+    #     '''return (R_pixels) R_images, low, high, rock_pixels'''
             
-        R_images = compute_R(low, high, I0_low, I0_high, input = 'images', method= method, const=const)
+    #     R_images = compute_R(low, high, I0_low, I0_high, input = 'images', method= method, const=const)
         
-        if input == 'pixels':
-            R_pixels = compute_R(rock_pixels[0], rock_pixels[1], I0_low, I0_high, input = input, method= method, const=const)
-            return R_pixels, R_images    
-        else:
-            return R_images
+    #     if input == 'pixels':
+    #         R_pixels = compute_R(rock_pixels[0], rock_pixels[1], I0_low, I0_high, input = input, method= method, const=const)
+    #         return R_pixels, R_images    
+    #     else:
+    #         return R_images

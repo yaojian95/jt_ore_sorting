@@ -81,8 +81,6 @@ if __name__ == "__main__":
     z = path2pixel(image_path, [[105, 1000, 400, 1200], [1950, 2844, 350, 1150]], max_len = [6, 9], length = [102, 35], 
             s_i = [64, 1], th_val = 105, save_rock_image = False, direction = 'ublr', save_rock_pixels=False)
 
-    consts = [5, 20]; th_val = 110
-
     classifier = MineralClassifier(z[2], excel_path)
     # 选择分类方法
     # method = 'Dual_thresh' 

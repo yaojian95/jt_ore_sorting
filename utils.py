@@ -54,11 +54,10 @@ def find_closest_point(scrap_rates, recovery_rates, target= [20, 95]):
 def plot_curves(
     rates, 
     scrap_rates_ideal,
-    grade_thresholds_ideal: list,
+    grade_thresholds_ideal,
     best_sum_point = None,
     best_enrichment_point = None,
-    best_constraint_point = None,
-) -> None:
+    best_constraint_point = None):
     """
     绘制理想曲线、基线曲线、Pareto 前沿，并突出显示最佳点。
 
