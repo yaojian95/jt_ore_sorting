@@ -10,9 +10,7 @@ import pandas as pd
 import numpy as np
 import sys
 sys.path.append("..")
-
-from preprocessing import get_contours
-from dataloader import split_dual_xray_image
+import logging
 
 # classifiers/r_method.py
 from .base_classifier import BaseClassifier
@@ -32,22 +30,39 @@ class RMethodClassifier(BaseClassifier):
         self.R_pixels = self.compute_R(self.pixels[0], self.pixels[1], I0_low, I0_high, input = input, method= method, const=const)
         # self.pixel_kind = pixel_kind
 
-    def classify_ores(self):
+    def classify_ores(self, I_th, ratio_th):
+        '''
+        Dual-thresh version of R method. 
+        Mean-value version has already been implemented in dual_thresh.py. 
+        '''
         # 这里实现R_method分类的逻辑
 
-        pass
+        try:
+            # 计算每个样本的低像素比例
+            low_pixel_ratios = self.R_pixels.apply(lambda x: (np.array(x) > I_th).mean())
+            predictions = (low_pixel_ratios > ratio_th).astype(int).values
+            return predictions
+        
+        except Exception as e:
+            logging.error(f"分类时出错: {e}")
+            return np.zeros(len(self.R_pixels))  
     
-
     def tuning(self, 
                min_recovery_rate = 0.95,
                min_scrap_rate = 0.2,
                A_range = np.arange(0.5, 1.2, 0.01), 
                step_B= 0.05):
         
+        '''
+        For now, just call the tuning method of DualThreshClassifier.
+        '''
+        
         test = DualThreshClassifier(truth = self.truth, pixels= self.R_pixels, pixel_kind= 'R', include_Fe=self.include_Fe)
         test.tuning(min_recovery_rate=min_recovery_rate, min_scrap_rate=min_scrap_rate, A_range=A_range, step_B=step_B)
-
-        return test
+        
+        # 完全替换实例为test（包括方法和属性）
+        self.__class__ = test.__class__
+        self.__dict__ = test.__dict__
     
     def compute_R(self, low, high, I0_low = 195, I0_high = 196, input = 'images', method = 'a', const = [5, 20]):
 

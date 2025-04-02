@@ -14,8 +14,7 @@ import numpy as np
 import pandas as pd
 import pickle
 import logging
-from typing import Tuple
-from preprocessing import draw_contours_yao, get_contours
+from preprocessing import get_contours
 import cv2
 from utils import append_generic
 
@@ -50,7 +49,10 @@ def split_dual_xray_image(image, offset_up=0, offset_down=0):
 def path2pixel(path, roi, max_len = 6, length = 100, s_i = 0, direction = 'ublr', th_val = 105,
                 save_rock_image = False, save_rock_pixels = False):
     '''
-    return low, high, rock_pixels, low_contoured, contours
+
+    Returns:
+    --------
+    low, high, rock_pixels, low_contoured, contours
     '''
     
     image = cv2.imread(path, cv2.IMREAD_GRAYSCALE) 
@@ -141,8 +143,13 @@ def path2truth(path):
 
     return ann, ann.iloc[:, 0]
 
-def load_data(pixel_file, truth_path):
+def load_data(pixel_file, truth_path = None):
     '''
+    Parameters:
+    ----------
+    - pixel_file: path of pixel data, str or list of low and high energy pixels, pd.Series
+    - truth_path: path of truth data, str
+
     Returns:
     -------
     - pixels_full: list of low and high energy pixels, pd.Series
@@ -150,65 +157,16 @@ def load_data(pixel_file, truth_path):
     '''
     if pixel_file is not str:
         pixels_data = pixel_file
+
     else:
-        # 加载像素数据
         with open(pixel_file, 'rb') as f:
             pixels_data = pickle.load(f)
 
-    true_results, rock_ids = path2truth(truth_path)
-
-    pixels_full = [pd.Series(rock).iloc[rock_ids - 1] for rock in pixels_data]
+    if truth_path is None:
+        true_results = None
+        pixels_full = [pd.Series(rock) for rock in pixels_data]
+    else:
+        true_results, rock_ids = path2truth(truth_path)
+        pixels_full = [pd.Series(rock).iloc[rock_ids - 1] for rock in pixels_data]
 
     return pixels_full, true_results
-
-
-# # 定义 load_data 函数
-# def load_data(
-#         pixel_file,
-#         date = None,
-#         annotation_file = None):
-#     """
-#     加载并预处理像素数据和注释数据。
-
-#     参数:
-#     - pixel_file (str): 包含像素数据的 pickle 文件路径。
-#     - annotation_file (str): 包含注释数据的 Excel 文件路径。
-
-#     返回:
-#     - Tuple 包含:
-#         - ann (pd.DataFrame): 预处理后的注释 DataFrame。
-#         - pixels (pd.Series): 预处理后的像素 Series。
-#     """
-
-#     if pixel_file is not str:
-#         pixels = pixel_file
-#     else:
-#         # 加载像素数据
-#         with open(pixel_file, 'rb') as f:
-#             pixels_data = pickle.load(f)
-#         pixels = pd.Series(pixels_data[date]['low'][:len(ann.iloc[:,0])])
-
-#     try:
-#         # 加载注释数据
-#         ann = pd.read_excel(annotation_file)
-#         ann = ann.loc[:, ~ann.columns.str.contains('^Unnamed')]
-#         ann.rename(columns={
-#             'Fe': "Fe_grade",
-#             'Zn': "Zn_grade",
-#             'Pb': "Pb_grade",
-#             'S': "S_grade",
-#             'Weight(g)': "weight"
-#         }, inplace=True)
-
-#         # 处理缺失数据
-#         none_indexes = pixels[pixels.isnull()].index.tolist()
-#         missing_indexes = ann[ann.isnull().any(axis=1)].index.tolist()
-#         indexes_to_remove = set(none_indexes).union(missing_indexes)
-#         pixels = pixels.drop(indexes_to_remove)
-#         ann = ann.drop(indexes_to_remove)
-
-#         logging.info(f"加载数据完成。清洗后的样本数量: {len(ann)}")
-#         return ann, pixels
-#     except Exception as e:
-#         logging.error(f"加载数据时出错: {e}")
-#         raise

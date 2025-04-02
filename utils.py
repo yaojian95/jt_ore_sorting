@@ -129,7 +129,7 @@ def plot_curves(
             ax1.scatter(best_constraint_point['抛废率'], best_constraint_point['回收率'],
                         label='最佳约束点', color='orange', edgecolors='black', s=100)
 
-    ax1.legend()
-    ax1.grid(True)
+    ax1.legend(frameon = False)
+    # ax1.grid(True)
     plt.tight_layout()
     plt.show()

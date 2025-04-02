@@ -143,47 +143,6 @@ class DualThreshClassifier(BaseClassifier):
 
         # return best_params, best_metrics
     
-    def calculate_tuning_metrics(self, predictions: np.ndarray) -> Dict[str, float]:
-        """
-        计算用于超参数调优的指标，与品位阈值无关。
-
-        参数:
-        - predictions (np.ndarray): 预测结果数组（1 表示高品位，0 表示低品位）。
-
-        返回:
-        - Dict[str, float]: 包含调优指标的字典。
-        """
-        high_grade_mask = predictions == 1
-        low_grade_mask = predictions == 0
-
-        # 计算抛废率和回收率
-        scrap_rate = self.weight[low_grade_mask].sum() / self.weight.sum()
-        recovery_rate = (self.weight[high_grade_mask] * self.y[high_grade_mask]).sum() / (self.weight * self.y).sum()
-
-        # 计算富集率
-        avg_pb_grade_all = self.pb_grade.mean()
-        avg_zn_grade_all = self.zn_grade.mean()
-        avg_pb_grade_high = np.nan_to_num(self.pb_grade[high_grade_mask].mean())
-        avg_zn_grade_high = np.nan_to_num(self.zn_grade[high_grade_mask].mean())
-        avg_pb_grade_low = np.nan_to_num(self.pb_grade[low_grade_mask].mean())
-        avg_zn_grade_low = np.nan_to_num(self.zn_grade[low_grade_mask].mean())
-
-        enrichment_Pb = avg_pb_grade_high / avg_pb_grade_all if avg_pb_grade_all != 0 else 0
-        enrichment_Zn = avg_zn_grade_high / avg_zn_grade_all if avg_zn_grade_all != 0 else 0
-
-        return {
-            '抛废率': scrap_rate,
-            '回收率': recovery_rate,
-            '铅富集比': enrichment_Pb,
-            '锌富集比': enrichment_Zn,
-            '铅平均品位（保留）': avg_pb_grade_high,
-            '锌平均品位（保留）': avg_zn_grade_high,
-            '铅平均品位（抛废）': avg_pb_grade_low,
-            '锌平均品位（抛废）': avg_zn_grade_low,
-            '铅平均品位': avg_pb_grade_all,
-            '锌平均品位': avg_zn_grade_all,
-        }
-    
     def _compute_pareto_front(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         计算 Pareto 前沿。
