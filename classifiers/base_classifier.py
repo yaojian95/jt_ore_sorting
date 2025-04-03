@@ -11,19 +11,20 @@ class BaseClassifier(ABC):
 
         if truth is not None:
             self.truth = truth
+            self.weight = truth['weight']
             self.pb_grade = truth['Pb_grade'] / 100
             self.zn_grade = truth['Zn_grade'] / 100
             self.fe_grade = truth['Fe_grade'] / 100
             self.include_Fe = include_Fe
 
+            self.avg_pb_grade_all = np.average(self.pb_grade, weights=self.weight)
+            self.avg_zn_grade_all = np.average(self.zn_grade, weights=self.weight)
+
             if not include_Fe:
                 self.y = self.pb_grade + self.zn_grade  # 综合品位
             else:
                 self.y = self.pb_grade + self.zn_grade + self.fe_grade
-
-            self.weight = truth['weight']
             
-
     @abstractmethod
     def classify_ores(self):
         """
@@ -46,7 +47,12 @@ class BaseClassifier(ABC):
         assert self.truth is not None, "ground_truth is required in tuning mode"
         pass
 
-    def calculate_tuning_metrics(self, predictions: np.ndarray) -> Dict[str, float]:
+    def safe_average(self, values, weights):
+        if len(values) == 0 or len(weights) == 0 or weights.sum() == 0:
+            return 0.0
+        return np.average(values, weights=weights)
+
+    def calculate_tuning_metrics(self, predictions: np.ndarray):
         """
         计算用于超参数调优的指标，与品位阈值无关。
 
@@ -64,15 +70,20 @@ class BaseClassifier(ABC):
         recovery_rate = (self.weight[high_grade_mask] * self.y[high_grade_mask]).sum() / (self.weight * self.y).sum()
 
         # 计算富集率
-        avg_pb_grade_all = self.pb_grade.mean()
-        avg_zn_grade_all = self.zn_grade.mean()
-        avg_pb_grade_high = np.nan_to_num(self.pb_grade[high_grade_mask].mean())
-        avg_zn_grade_high = np.nan_to_num(self.zn_grade[high_grade_mask].mean())
-        avg_pb_grade_low = np.nan_to_num(self.pb_grade[low_grade_mask].mean())
-        avg_zn_grade_low = np.nan_to_num(self.zn_grade[low_grade_mask].mean())
+        # avg_pb_grade_all = self.pb_grade.mean()
+        # avg_zn_grade_all = self.zn_grade.mean()
+        # avg_pb_grade_high = np.nan_to_num(self.pb_grade[high_grade_mask].mean())
+        # avg_zn_grade_high = np.nan_to_num(self.zn_grade[high_grade_mask].mean())
+        # avg_pb_grade_low = np.nan_to_num(self.pb_grade[low_grade_mask].mean())
+        # avg_zn_grade_low = np.nan_to_num(self.zn_grade[low_grade_mask].mean())
 
-        enrichment_Pb = avg_pb_grade_high / avg_pb_grade_all if avg_pb_grade_all != 0 else 0
-        enrichment_Zn = avg_zn_grade_high / avg_zn_grade_all if avg_zn_grade_all != 0 else 0
+        avg_pb_grade_high = self.safe_average(self.pb_grade[high_grade_mask], weights=self.weight[high_grade_mask])
+        avg_zn_grade_high = self.safe_average(self.zn_grade[high_grade_mask], weights=self.weight[high_grade_mask])
+        avg_pb_grade_low = self.safe_average(self.pb_grade[low_grade_mask], weights=self.weight[low_grade_mask])
+        avg_zn_grade_low = self.safe_average(self.zn_grade[low_grade_mask], weights=self.weight[low_grade_mask])
+
+        enrichment_Pb = avg_pb_grade_high / self.avg_pb_grade_all if self.avg_pb_grade_all != 0 else 0
+        enrichment_Zn = avg_zn_grade_high / self.avg_zn_grade_all if self.avg_zn_grade_all != 0 else 0
 
         return {
             '抛废率': scrap_rate,
@@ -83,6 +94,6 @@ class BaseClassifier(ABC):
             '锌平均品位（保留）': avg_zn_grade_high,
             '铅平均品位（抛废）': avg_pb_grade_low,
             '锌平均品位（抛废）': avg_zn_grade_low,
-            '铅平均品位': avg_pb_grade_all,
-            '锌平均品位': avg_zn_grade_all,
+            '铅平均品位': self.avg_pb_grade_all,
+            '锌平均品位': self.avg_zn_grade_all,
         }

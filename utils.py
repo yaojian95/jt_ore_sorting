@@ -3,9 +3,7 @@ utility functions.
 '''
 
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-import logging
 
 def append_generic(arr1, arr2):
     '''
@@ -57,7 +55,8 @@ def plot_curves(
     grade_thresholds_ideal,
     best_sum_point = None,
     best_enrichment_point = None,
-    best_constraint_point = None):
+    best_constraint_point = None, 
+    title = '回收率-抛废率曲线'):
     """
     绘制理想曲线、基线曲线、Pareto 前沿，并突出显示最佳点。
 
@@ -72,7 +71,8 @@ def plot_curves(
 
     _, ax1 = plt.subplots(figsize=(10, 7))
     for i in range(len(rates)):
-        ax1.plot(rates[i][0], rates[i][1], label=rates[i][2], color = rates[i][3], linewidth=2, marker='o')
+        ax1.plot(rates[i][0][0], rates[i][0][1], label=rates[i][1], color = rates[i][2], 
+                 linewidth=1, linestyle = rates[i][3], marker = rates[i][4], markersize = 3)
 
     ax1.set_xlim(0, 1.05)
     ax1.set_ylim(0, 1.05)
@@ -84,7 +84,7 @@ def plot_curves(
     # 设置坐标轴标签和标题
     ax1.set_xlabel('抛废率 (%)', fontsize=12)
     ax1.set_ylabel('回收率 (%)', fontsize=12)
-    ax1.set_title('化验、均值与双阈值算法“回收率-抛废率”曲线', fontsize=14)
+    ax1.set_title(title, fontsize=14)
 
     # 创建一个双轴来显示品位阈值
     ax2 = ax1.twiny()
@@ -129,6 +129,6 @@ def plot_curves(
                         label='最佳约束点', color='orange', edgecolors='black', s=100)
 
     ax1.legend(frameon = False)
-    # ax1.grid(True)
+    ax1.grid(True)
     plt.tight_layout()
     plt.show()

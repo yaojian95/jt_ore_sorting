@@ -1,12 +1,7 @@
 '''
 To demonstrate the results of classification.
 
-input: a class that after tuning, has the following attributes:
-    - best_params: the best parameters of the classifier
-    - best_metrics: the best metrics of the classifier
-    - tuning_results: the tuning results of the classifier
-    - pixels: the pixels of the input image
-    - truth: the truth of the input image
+input: a classifier class that after tuning
 '''
 import pandas as pd
 import logging
@@ -19,6 +14,7 @@ import numpy as np
 class Demo:
     def __init__(self, classifier):
 
+        # self.__dict__ = classifier.__dict__
         self.y = classifier.y
         self.weight = classifier.weight
         self.pixels = classifier.pixels
