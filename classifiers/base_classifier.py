@@ -16,6 +16,7 @@ class BaseClassifier(ABC):
             self.zn_grade = truth['Zn_grade'] / 100
             self.fe_grade = truth['Fe_grade'] / 100
             self.include_Fe = include_Fe
+            self.pb_zn_fe = (truth['Pb_grade'] + truth['Zn_grade'] + truth['Fe_grade']) / 100
 
             self.avg_pb_grade_all = np.average(self.pb_grade, weights=self.weight)
             self.avg_zn_grade_all = np.average(self.zn_grade, weights=self.weight)
