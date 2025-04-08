@@ -28,12 +28,12 @@ class DualThreshClassifier(BaseClassifier):
 
         Parameters
         ----------
-        :param I_th: 灰度阈值 (int): 像素低于该值的阈值。
-        :param ratio_th: 比例阈值 (float): 像素低于“灰度阈值”的比例阈值。
+        I_th: 灰度阈值 (int): 像素低于该值的阈值。
+        ratio_th: 比例阈值 (float): 像素低于“灰度阈值”的比例阈值。
 
         Returns
         ----------
-        :return: 预测结果数组（1 表示高品位，0 表示低品位）。
+        return: 预测结果数组（1 表示高品位，0 表示低品位）。
         """
         try:
             # 计算每个样本的低像素比例

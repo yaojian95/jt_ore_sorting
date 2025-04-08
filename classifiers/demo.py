@@ -276,13 +276,19 @@ class Demo:
             sys.stdout = new_stdout
             
             if self.best_params:
-                best_threshold_A, best_threshold_B = self.best_params
+                best_threshold_A, best_threshold_B = self.best_params[0:2]
                 print("\n=== 最佳超参数 ===")
                 print(f"灰度阈值: {best_threshold_A}")
                 print(f"比例阈值: {best_threshold_B * 100:.2f}%")
 
-                # 使用最佳超参数进行矿石分类
-                predictions = self.classify_ores(best_threshold_A, best_threshold_B)
+                if len(self.best_params) == 3:
+                    best_threshold_C = self.best_params[2]
+                    print(f"平均值阈值: {best_threshold_C}")
+                    predictions =  self.classify_ores(best_threshold_A, best_threshold_B, best_threshold_C)
+
+                else:
+                    predictions = self.classify_ores(best_threshold_A, best_threshold_B)
+                    
                 self.predictions = predictions
 
                 if self.include_Fe:
@@ -348,19 +354,7 @@ class Demo:
                 res_dict['best_sum_point'] = best_sum_point
                 res_dict['best_enrichment_point'] = best_enrichment_point
 
-                # 3. 最佳约束点（如果存在）
-                if self.best_under_constraints:
-                    best_constraint_point = pd.Series({
-                        'threshold_A': self.best_under_constraints[0],
-                        'threshold_B': self.best_under_constraints[1],
-                        '抛废率': self.best_under_constraints[2]['抛废率'],
-                        '回收率': self.best_under_constraints[2]['回收率'],
-                        '铅富集比': self.best_under_constraints[2]['铅富集比'],
-                        '锌富集比': self.best_under_constraints[2]['锌富集比'],
-                        '品位阈值': (self.best_under_constraints[2]['抛废率'] +
-                                        self.best_under_constraints[2]['回收率']) / 2
-                    })
-                    res_dict['best_constraint_point'] = best_constraint_point
+                # 3. 最佳约束点（满足抛废率和回收率约束的点）： 可通过best_metric和best_params来获得
             else:
                 logging.warning("没有可用的 Pareto 前沿来识别最佳点。")
 
@@ -379,7 +373,12 @@ class Demo:
                     if not matching_rows.empty:
                         closest_threshold_A = matching_rows.iloc[0]['threshold_A']
                         closest_threshold_B = matching_rows.iloc[0]['threshold_B']
-                        print(f"当回收率约为 {recovery * 100:.2f}% 时，抛废率为 {scrap * 100:.2f}%。此时的灰度阈值为{closest_threshold_A}，比例阈值为{closest_threshold_B * 100:.2f}%。")
+
+                        if len(self.best_params) == 3:
+                            closest_threshold_C = matching_rows.iloc[0]['threshold_C']
+                            print(f"当回收率约为 {recovery * 100:.2f}% 时，抛废率为 {scrap * 100:.2f}%。此时的灰度阈值为{closest_threshold_A}，比例阈值为{closest_threshold_B * 100:.2f}%，平均值阈值为{closest_threshold_C}。")
+                        else:
+                            print(f"当回收率约为 {recovery * 100:.2f}% 时，抛废率为 {scrap * 100:.2f}%。此时的灰度阈值为{closest_threshold_A}，比例阈值为{closest_threshold_B * 100:.2f}%。")
                     else:
                         print(f"当回收率约为 {recovery * 100:.2f}% 时，抛废率为 {scrap * 100:.2f}%。阈值信息不可用。")
             else:
