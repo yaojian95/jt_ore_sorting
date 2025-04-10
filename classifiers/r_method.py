@@ -15,6 +15,7 @@ import logging
 # classifiers/r_method.py
 from .base_classifier import BaseClassifier
 from .dual_thresh import DualThreshClassifier
+from .dual_all_parallel import ParallelClassifier
 
 class RMethodClassifier(BaseClassifier):
     def __init__(self):
@@ -30,7 +31,7 @@ class RMethodClassifier(BaseClassifier):
         self.R_pixels = self.compute_R(self.pixels[0], self.pixels[1], I0_low, I0_high, input = input, method= method, const=const)
         # self.pixel_kind = pixel_kind
 
-    def classify_ores(self, I_th, ratio_th):
+    def classify_ores(self, I_th, ratio_th, mean_th = None):
         '''
         Dual-thresh version of R method. 
         Mean-value version has already been implemented in dual_thresh.py. 
@@ -40,9 +41,18 @@ class RMethodClassifier(BaseClassifier):
         try:
             # 计算每个样本的低像素比例
             low_pixel_ratios = self.R_pixels.apply(lambda x: (np.array(x) > I_th).mean())
-            predictions = (low_pixel_ratios > ratio_th).astype(int).values
-            return predictions
-        
+            pre_th = (low_pixel_ratios > ratio_th).astype(int).values
+
+            if mean_th is None:
+                return pre_th
+            
+            else:
+                mean_value = self.R_pixels.apply(np.mean)
+                pre_mean = (mean_value > mean_th).astype(int).values
+                predictions = np.logical_and(pre_th, pre_mean)
+
+                return predictions
+            
         except Exception as e:
             logging.error(f"分类时出错: {e}")
             return np.zeros(len(self.R_pixels))  
@@ -52,14 +62,21 @@ class RMethodClassifier(BaseClassifier):
                min_scrap_rate = 0.2,
                A_range = np.arange(0.5, 1.2, 0.01), 
                step_B= 0.05,
+               mean_range=np.arange(0.5, 1.2, 0.01),
                grade_real_th = None):
         
         '''
         For now, just call the tuning method of DualThreshClassifier.
         '''
         
-        test = DualThreshClassifier(truth = self.truth, pixels= self.R_pixels, pixel_kind= 'R', include_Fe=self.include_Fe)
-        test.tuning(min_recovery_rate=min_recovery_rate, min_scrap_rate=min_scrap_rate, A_range=A_range, step_B=step_B, grade_real_th=grade_real_th)
+        if mean_range is None:
+            test = DualThreshClassifier(truth = self.truth, pixels= self.R_pixels, pixel_kind= 'R', include_Fe=self.include_Fe)
+        
+        else:
+            test = ParallelClassifier(truth = self.truth, pixels= self.R_pixels, pixel_kind= 'R', include_Fe=self.include_Fe)
+            
+        test.tuning(min_recovery_rate=min_recovery_rate, min_scrap_rate=min_scrap_rate, A_range=A_range, step_B=step_B, 
+                    mean_range = mean_range, grade_real_th=grade_real_th)
         
         # 完全替换实例为test（包括方法和属性）
         self.__class__ = test.__class__

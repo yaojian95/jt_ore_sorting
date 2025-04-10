@@ -35,7 +35,6 @@ MANIFEST
 
 *.fits
 
-*.pkl
 *.npy
 *.npz
 *.h5
