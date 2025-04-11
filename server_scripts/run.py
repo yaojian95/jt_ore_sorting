@@ -11,18 +11,16 @@ plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 import pickle
 
 current_dir = os.getcwd()
-code_path = os.path.abspath(os.path.join(current_dir, '..', '..', 'codes'))
-data_path = os.path.abspath(os.path.join(current_dir, '..', '..', 'data'))
+code_path = os.path.abspath(os.path.join(current_dir, '..', '..', '..', 'codes'))
+data_path = os.path.abspath(os.path.join(current_dir, '..', '..', '..', 'data'))
 
-sys.path.append(os.path.join(code_path, 'project_x_ray_images_stack'))
-# sys.path.append(r'E:\photoelectric_sorting\codes\project_x_ray_images_stack')
+sys.path.append(os.path.join(code_path, 'jt_ore_sorting'))
 
 from dataloader import path2truth, path2pixel, load_data
 
 from classifiers.dual_thresh import DualThreshClassifier
 from classifiers.r_method import RMethodClassifier
 from classifiers.dual_all_parallel import ParallelClassifier
-
 
 
 path_0219 = os.path.join(data_path, '20250219/160kV_4mA_forward.png')
@@ -62,6 +60,8 @@ input_both[1]= pd.concat([input_0219[1], input_both[1]], axis = 0)
 
 input_both[1]['Zn_Pb_grade'] = input_both[1]['Zn_grade'] + input_both[1]['Pb_grade']
 
+# print('Success')
+# exit()
 
 def tune(input_list, include_Fe = False):
     
@@ -106,7 +106,7 @@ def tune(input_list, include_Fe = False):
 
 res_all = tune([input_0219, input_0224, input_both])
 
-with open('results.pkl', 'wb') as f:
+with open('results_server.pkl', 'wb') as f:
     pickle.dump(res_all, f) 
 
 # with open ('results.pkl', 'rb') as f:
