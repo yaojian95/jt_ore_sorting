@@ -106,7 +106,7 @@ def tune(input_list, include_Fe = False):
 
 res_all = tune([input_0219, input_0224, input_both])
 
-with open('results_server.pkl', 'wb') as f:
+with open('results_new.pkl', 'wb') as f:
     pickle.dump(res_all, f) 
 
 # with open ('results.pkl', 'rb') as f:
