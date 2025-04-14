@@ -169,4 +169,15 @@ def load_data(pixel_file, truth_path = None):
         true_results, rock_ids = path2truth(truth_path)
         pixels_full = [pd.Series(rock).iloc[rock_ids - 1] for rock in pixels_data]
 
+    if true_results is not None:
+        fe_avg = np.average(true_results['Fe_grade'], weights=true_results['weight'])
+        zn_avg = np.average(true_results['Zn_grade'], weights=true_results['weight'])
+        pb_avg = np.average(true_results['Pb_grade'], weights=true_results['weight'])
+        
+        print(f"品位信息（加权平均）：")
+        print(f"  - 铁品位：{fe_avg:.2f}%")
+        print(f"  - 锌品位：{zn_avg:.2f}%")
+        print(f"  - 铅品位：{pb_avg:.2f}%")
+        print("注：品位值为加权平均值，权重为矿石重量")
+
     return pixels_full, true_results
