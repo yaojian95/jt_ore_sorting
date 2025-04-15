@@ -361,6 +361,7 @@ class Demo:
             # 找到最接近目标回收率的点
             # target_recovery = 0.95
             closest_point = self.find_closest_point(target = [0.2, 0.95])
+            self.closest_point = closest_point
 
             # 获取 closest_point 对应的 灰度阈值 和 比例阈值
             if closest_point:
