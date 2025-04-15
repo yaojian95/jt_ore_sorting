@@ -170,14 +170,20 @@ def load_data(pixel_file, truth_path = None):
         pixels_full = [pd.Series(rock).iloc[rock_ids - 1] for rock in pixels_data]
 
     if true_results is not None:
+        # 计算加权平均值
         fe_avg = np.average(true_results['Fe_grade'], weights=true_results['weight'])
         zn_avg = np.average(true_results['Zn_grade'], weights=true_results['weight'])
         pb_avg = np.average(true_results['Pb_grade'], weights=true_results['weight'])
         
+        # 计算标准差
+        fe_std = np.sqrt(np.cov(true_results['Fe_grade'], aweights=true_results['weight']))
+        zn_std = np.sqrt(np.cov(true_results['Zn_grade'], aweights=true_results['weight']))
+        pb_std = np.sqrt(np.cov(true_results['Pb_grade'], aweights=true_results['weight']))
+        
         print(f"品位信息（加权平均）：")
-        print(f"  - 铁品位：{fe_avg:.2f}%")
-        print(f"  - 锌品位：{zn_avg:.2f}%")
-        print(f"  - 铅品位：{pb_avg:.2f}%")
-        print("注：品位值为加权平均值，权重为矿石重量")
+        print(f"  - 铁品位：{fe_avg:.2f}% ± {fe_std:.2f}%")
+        print(f"  - 锌品位：{zn_avg:.2f}% ± {zn_std:.2f}%")
+        print(f"  - 铅品位：{pb_avg:.2f}% ± {pb_std:.2f}%")
+        print("注：品位值为加权平均值，权重为矿石重量；± 后为标准差")
 
     return pixels_full, true_results
