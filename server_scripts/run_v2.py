@@ -1,14 +1,14 @@
 import numpy as np
 import pandas as pd
-
 import os
 import sys
 
 import matplotlib.pyplot as plt
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS'] 
-# %matplotlib inline
 
 import pickle
+from multiprocessing import Pool
+from multiprocessing import get_context
 
 current_dir = os.getcwd()
 code_path = os.path.abspath(os.path.join(current_dir, '..', '..', '..', 'codes'))
@@ -85,50 +85,98 @@ input_both[1]['Zn_Pb_grade'] = input_both[1]['Zn_grade'] + input_both[1]['Pb_gra
 # print('Success')
 # exit()
 
-def tune(input_list, input_name = ['0219', '0224', 'both','0225'], step_A = 5, include_Fe = False):
-    
-    m_name = ['dmp', 'dual', 'Rmp', 'R']; 
+def _tune_single_algorithm(input, algorithm_class, params, tuning_params):
+    """单个算法的调优函数"""
+    classifier = algorithm_class(**params)
+    classifier.tuning(min_recovery_rate=0.95, min_scrap_rate=0.2, **tuning_params)
+    return classifier
+
+def tune(input_list, input_name = ['0219', '0224', 'both'], step_A = 5, include_Fe=False):
+    m_name = ['dmp', 'dual', 'Rmp', 'R']
     res = {}
-    i = 0
-    for input in input_list:
-        dmp = ParallelClassifier(pixels=input[0][0], truth=input[1], pixel_kind= 'grayness')
-        dmp.tuning(min_recovery_rate=0.95, min_scrap_rate=0.2, A_range=np.arange(0, 256, step_A), step_B=0.05, 
-               mean_range= np.arange(20, 100), grade_real_th=0.1)
-        
-        dual = DualThreshClassifier(pixels=input[0][0], truth=input[1], pixel_kind= 'grayness', include_Fe = include_Fe)
-        dual.tuning(min_recovery_rate=0.95, min_scrap_rate=0.2, A_range=np.arange(0, 256, step_A), step_B=0.05, 
-                    grade_real_th= 0.1)
-        
-        #考虑三个阈值时，R_method.py内部使用的还是ParallelClassifier
-        Rmp = RMethodClassifier(pixels=input[0], truth=input[1], I0_low=195, I0_high=196, input= 'pixels', method= 'a', const= [5, 20], include_Fe = include_Fe)
-        Rmp.tuning(min_recovery_rate=0.95, min_scrap_rate=0.2, A_range=np.arange(0.5, 1.2, 0.01), step_B=0.05, 
-                   mean_range= np.arange(0.5, 1.2, 0.01), grade_real_th= 0.1)
-        
-        R = RMethodClassifier(pixels=input[0], truth=input[1], I0_low=195, I0_high=196, input= 'pixels', method= 'a', const= [5, 20], include_Fe = include_Fe)
-        R.tuning(min_recovery_rate=0.95, min_scrap_rate=0.2, A_range=np.arange(0.5, 1.2, 0.01), step_B=0.05, 
-                 grade_real_th= 0.1)
-        
-        algorithms = [dmp, dual, Rmp, R]
+    
+    for i, input in enumerate(input_list):
+        # 定义每个算法的参数
+        algorithms_params = [
+            {
+                'pixels': input[0][0],
+                'truth': input[1],
+                'pixel_kind': 'grayness'
+            },
+            {
+                'pixels': input[0][0],
+                'truth': input[1],
+                'pixel_kind': 'grayness',
+                'include_Fe': include_Fe
+            },
+            {
+                'pixels': input[0],
+                'truth': input[1],
+                'I0_low': 195,
+                'I0_high': 196,
+                'input': 'pixels',
+                'method': 'a',
+                'const': [5, 20],
+                'include_Fe': include_Fe
+            },
+            {
+                'pixels': input[0],
+                'truth': input[1],
+                'I0_low': 195,
+                'I0_high': 196,
+                'input': 'pixels',
+                'method': 'a',
+                'const': [5, 20],
+                'include_Fe': include_Fe
+            }
+        ]
 
-        j = 0
-        for method in algorithms:
-            try:
-                if len(method.best_params) == 3:
-                    params = {'grayness_th': method.best_params[0], 'ratio_th': method.best_params[1], 'mean_th': method.best_params[2]}
-                else:
-                    params = {'grayness_th': method.best_params[0], 'ratio_th': method.best_params[1]}
+        # 定义每个算法的调优参数
+        tuning_params = [
+            {
+                'A_range': np.arange(0, 256, step_A),
+                'step_B': 0.05,
+                'mean_range': np.arange(20, 100),
+                'grade_real_th': 0.1
+            },
+            {
+                'A_range': np.arange(0, 256, step_A),
+                'step_B': 0.05,
+                'grade_real_th': 0.1
+            },
+            {
+                'A_range': np.arange(0.5, 1.2, 0.01),
+                'step_B': 0.05,
+                'mean_range': np.arange(0.5, 1.2, 0.01),
+                'grade_real_th': 0.1
+            },
+            {
+                'A_range': np.arange(0.5, 1.2, 0.01),
+                'step_B': 0.05,
+                'grade_real_th': 0.1
+            }
+        ]
 
-                params.update(method.best_metrics)
+        # 创建进程池并行执行
+        with get_context('spawn').Pool(processes=4) as pool:
+            results = pool.starmap(_tune_single_algorithm, [
+                (input, ParallelClassifier, algorithms_params[0], tuning_params[0]),
+                (input, DualThreshClassifier, algorithms_params[1], tuning_params[1]),
+                (input, RMethodClassifier, algorithms_params[2], tuning_params[2]),
+                (input, RMethodClassifier, algorithms_params[3], tuning_params[3])
+            ])
 
-            except:
-                params = 'No best params'
+        # 处理结果
+        for j, method in enumerate(results):
+            if len(method.best_params) == 3:
+                params = {'grayness_th': method.best_params[0], 'ratio_th': method.best_params[1], 'mean_th': method.best_params[2]}
+            else:
+                params = {'grayness_th': method.best_params[0], 'ratio_th': method.best_params[1]}
 
+            params.update(method.best_metrics)
             res[input_name[i] + '_' + m_name[j]] = params
-            
-            j += 1
-        i += 1
 
-    return res           
+    return res        
 
 res_all = tune([input_0219, input_0224, input_both, input_0225], input_name = ['0219', '0224', 'both','0225'], step_A = 1)
 

@@ -45,3 +45,6 @@ MANIFEST
 *.txt
 *.png
 *.pkl
+*.out
+*.slurm
+*.err
