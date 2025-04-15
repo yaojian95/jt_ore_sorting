@@ -1,6 +1,6 @@
 '''
 Implementation of R_method.
-
+test
 created by:
     @author: Jian Yao 
     @date: 2025-03-20
