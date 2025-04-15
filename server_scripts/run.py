@@ -21,6 +21,7 @@ from dataloader import path2truth, path2pixel, load_data
 from classifiers.dual_thresh import DualThreshClassifier
 from classifiers.r_method import RMethodClassifier
 from classifiers.dual_all_parallel import ParallelClassifier
+from classifiers.demo import Demo
 
 
 path_0219 = os.path.join(data_path, '20250219/160kV_4mA_forward.png')
@@ -122,6 +123,11 @@ def tune(input_list, input_name = ['0219', '0224', 'both','0225'], step_A = 5, i
 
             except:
                 params = 'No best params'
+
+            testtest = Demo(method)
+            new_test = testtest.find_closest_point(target = [0.2, 0.95])
+            params['close_scrap'] = [round(i, 4) for i in new_test[0][1:]]
+            params['close_recov'] = [round(i, 4) for i in new_test[1][1:]]
 
             res[input_name[i] + '_' + m_name[j]] = params
             
