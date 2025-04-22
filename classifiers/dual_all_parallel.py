@@ -103,6 +103,7 @@ class ParallelClassifier(BaseClassifier):
         
         # 确保已设置 ground truth 数据
         assert self.truth is not None, "ground_truth is required in tuning mode"
+        self.best_under_constraints = None
         
         self.grade_real_th = grade_real_th
         best_metrics = None
