@@ -4,6 +4,61 @@ utility functions.
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
+
+
+def select_ores_greedy(df, N, target_grade, max_iter=1000):
+    """
+    使用贪心算法选择矿石
+    
+    参数:
+    - df: pandas.DataFrame, 包含列: 'weight', 'pb', 'zn', 'fe'
+    - N: int, 需要选择的矿石数量
+    - target_grade: float, 目标(Pb+Zn)加权平均品位
+    - max_iter: int, 最大迭代次数
+    
+    返回:
+    - selected_df: pandas.DataFrame, 选中的矿石数据
+    """
+    # 计算每块矿石的初始delta值
+    df = df.copy()  # 避免修改原DataFrame
+    df['delta'] = abs((df['Pb_grade'] + df['Zn_grade']) - target_grade)
+    
+    # 初始选择: 选择delta最小的N块矿石
+    selected = df.nsmallest(N, 'delta').copy()
+    rest = df.drop(selected.index).copy()
+    
+    # 计算当前加权平均
+    def calc_avg(s_df):
+        total_weight = s_df['weight'].sum()
+        return (s_df['Pb_grade'] * s_df['weight']).sum() / total_weight + \
+               (s_df['Zn_grade'] * s_df['weight']).sum() / total_weight
+    
+    current_avg = calc_avg(selected)
+    best_diff = abs(current_avg - target_grade)
+    
+    # 迭代优化
+    for _ in range(max_iter):
+        improved = False
+        for i in selected.index:
+            for j in rest.index:
+                new_selected = pd.concat([selected.drop(i), rest.loc[[j]]])
+                new_avg = calc_avg(new_selected)
+                new_diff = abs(new_avg - target_grade)
+                
+                if new_diff < best_diff:
+                    rest = pd.concat([rest.drop(j), selected.loc[[i]]])
+                    selected = new_selected
+                    best_diff = new_diff
+                    improved = True
+                    break
+            if improved:
+                break
+        if not improved:
+            break
+    
+    print(f"目标品位: {target_grade:.4f}, 实际得到: {calc_avg(selected):.4f}")
+    return selected.drop(columns=['delta'])
 
 def append_generic(arr1, arr2):
     '''
