@@ -16,6 +16,7 @@ data_path = os.path.abspath(os.path.join(current_dir, '..', '..', '..', 'data'))
 
 sys.path.append(os.path.join(code_path, 'jt_ore_sorting'))
 
+from utils import select_ores_greedy
 from dataloader import path2truth, path2pixel, load_data
 
 from classifiers.dual_thresh import DualThreshClassifier
@@ -24,7 +25,7 @@ from classifiers.dual_all_parallel import ParallelClassifier
 from classifiers.demo import Demo
 
 
-with open('input_0219_0224_0225.pkl', 'rb') as f:
+with open('/home/yaojian/codes/jt_ore_sorting/input_0219_0224_0225.pkl', 'rb') as f:
     input_all = pickle.load(f)
 pixels = input_all[0]
 data = input_all[1]
@@ -83,9 +84,24 @@ def tune(input_list, input_name = ['0219', '0224', 'both','0225'], step_A = 5, i
 
     return res           
 
-res_all = tune([input_0219, input_0224, input_both, input_0225], input_name = ['0219', '0224', 'both','0225'], step_A = 1)
+datasets = []
+input_names = []
+for i in range(7):
 
-with open('20250414_results_inlucde_0225_v3.pkl', 'wb') as f:
+    grade_i = select_ores_greedy(data, 100, i+1)
+
+    index = grade_i.index.values
+    input_i= [[pixels[0][index], pixels[1][index]], data.loc[index]]
+
+    datasets.append(input_i)
+    input_names.append('MG_%s'%(i+1))
+
+with open('20250422_7_mean_grade_data_v2.pkl', 'wb') as f:
+    pickle.dump(datasets, f) 
+
+res_all = tune(datasets, input_name = input_names, step_A = 1)
+
+with open('20250422_results_7_mean_grade_data.pkl', 'wb') as f:
     pickle.dump(res_all, f) 
 
 # with open ('results.pkl', 'rb') as f:
