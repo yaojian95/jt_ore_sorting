@@ -20,45 +20,109 @@ def select_ores_greedy(df, N, target_grade, max_iter=1000):
     返回:
     - selected_df: pandas.DataFrame, 选中的矿石数据
     """
-    # 计算每块矿石的初始delta值
-    df = df.copy()  # 避免修改原DataFrame
+
+    df = df.copy()
     df['delta'] = abs((df['Pb_grade'] + df['Zn_grade']) - target_grade)
     
-    # 初始选择: 选择delta最小的N块矿石
+    # 初始选择：delta最小的N块矿石
     selected = df.nsmallest(N, 'delta').copy()
     rest = df.drop(selected.index).copy()
     
-    # 计算当前加权平均
     def calc_avg(s_df):
         total_weight = s_df['weight'].sum()
-        return (s_df['Pb_grade'] * s_df['weight']).sum() / total_weight + \
-               (s_df['Zn_grade'] * s_df['weight']).sum() / total_weight
+        return ((s_df['Pb_grade'] * s_df['weight']).sum() + 
+                (s_df['Zn_grade'] * s_df['weight']).sum()) / total_weight
     
-    current_avg = calc_avg(selected)
-    best_diff = abs(current_avg - target_grade)
+    best_diff = abs(calc_avg(selected) - target_grade)
     
-    # 迭代优化
     for _ in range(max_iter):
         improved = False
-        for i in selected.index:
-            for j in rest.index:
-                new_selected = pd.concat([selected.drop(i), rest.loc[[j]]])
-                new_avg = calc_avg(new_selected)
-                new_diff = abs(new_avg - target_grade)
-                
-                if new_diff < best_diff:
-                    rest = pd.concat([rest.drop(j), selected.loc[[i]]])
-                    selected = new_selected
-                    best_diff = new_diff
-                    improved = True
-                    break
+        # 遍历selected的副本，避免修改循环中的集合
+        for i in selected.index.copy():
             if improved:
                 break
+            # 遍历rest的副本
+            for j in rest.index.copy():
+                try:
+                    # 尝试交换i和j
+                    new_selected = pd.concat([
+                        selected.drop(i),
+                        rest.loc[[j]]  # 确保用[[j]]保留DataFrame结构
+                    ])
+                    new_avg = calc_avg(new_selected)
+                    new_diff = abs(new_avg - target_grade)
+                    
+                    if new_diff < best_diff:
+                        # 更新rest：移除j，添加i
+                        new_rest = pd.concat([
+                            rest.drop(j),
+                            selected.loc[[i]]
+                        ])
+                        # 确认索引同步
+                        assert i in new_rest.index, f"矿石{i}未正确添加到rest！"
+                        assert j not in new_rest.index, f"矿石{j}未从rest中移除！"
+                        
+                        # 更新selected和rest
+                        selected = new_selected
+                        rest = new_rest
+                        best_diff = new_diff
+                        improved = True
+                        break
+                except KeyError as e:
+                    print(f"交换时出错：{e}，跳过此次交换")
+                    continue
         if not improved:
             break
     
+    # 验证结果
+    # assert selected.index.is_unique, "选中的矿石索引重复！"
+    # assert rest.index.is_unique, "剩余的矿石索引重复！"
+    # assert len(selected) == N, f"选中的矿石数量不正确：{len(selected)} != {N}"
+    
     print(f"目标品位: {target_grade:.4f}, 实际得到: {calc_avg(selected):.4f}")
     return selected.drop(columns=['delta'])
+
+def merge_datasets(datasets):
+    """
+    合并多个数据集
+    Parameters:
+        datasets: 要合并的数据集列表，每个元素格式为 [pixels, truth]
+                  pixels是包含低能和高能数据的列表
+    Returns:
+        合并后的数据集，格式为 [pixels, truth]
+    """
+    merged = [[], None]
+    offset = 0
+    
+    # 合并pixels
+    for i, dataset in enumerate(datasets):
+        print(i)
+        if not merged[0]:
+            merged[0] = [d.copy(deep=True) for d in dataset[0]]
+        else:
+            for j in range(2):
+                # 在复制的DataFrame上增加索引偏移量
+                copied_data = dataset[0][j].copy(deep=True)
+                copied_data.index += offset
+                merged[0][j] = pd.concat([merged[0][j], copied_data], axis=0)
+
+        if merged[1] is None:
+            merged[1] = dataset[1].copy(deep=True)
+            merged[1]['source'] = f'source_{i}'
+
+        else:
+            # print(i)
+            copied_truth = dataset[1].copy(deep=True)
+            copied_truth['source'] = f'source_{i}'
+            copied_truth.index += offset
+            merged[1] = pd.concat([merged[1], copied_truth], axis=0)
+
+        offset += (dataset[1].index[-1] + 1)
+    
+    # 计算Zn_Pb_grade
+    merged[1]['Zn_Pb_grade'] = merged[1]['Zn_grade'] + merged[1]['Pb_grade']
+    
+    return merged
 
 def append_generic(arr1, arr2):
     '''
