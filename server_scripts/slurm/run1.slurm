@@ -3,10 +3,10 @@
 #SBATCH --output=R-%x.%j.out
 #SBATCH --error=R-%x.%j.err     
 #SBATCH --ntasks=1                    
-#SBATCH --cpus-per-task=8          
+#SBATCH --cpus-per-task=8         
 #SBATCH --time=01:30:00               
 #SBATCH --partition=debug         
-#SBATCH --mem=4G                  
+#SBATCH --mem=16G                  
 
 module load apps/anaconda3/2024.06
 

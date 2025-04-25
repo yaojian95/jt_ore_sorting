@@ -25,7 +25,7 @@ from classifiers.dual_all_parallel import ParallelClassifier
 from classifiers.demo import Demo
 
 
-with open('/home/yaojian/codes/jt_ore_sorting/input_0219_0224_0225.pkl', 'rb') as f:
+with open('/home/yaojian/data/input_0219_0224_0225.pkl', 'rb') as f:
     input_all = pickle.load(f)
 pixels = input_all[0]
 data = input_all[1]
@@ -70,7 +70,7 @@ def tune(input_list, input_name = ['0219', '0224', 'both','0225'], step_A = 5, i
                 params.update(method.best_metrics)
 
             except:
-                params = 'No best params'
+                params = {'grayness_th': 'No best params'}
 
             testtest = Demo(method)
             new_test = testtest.find_closest_point(target = [0.2, 0.95])
@@ -87,21 +87,25 @@ def tune(input_list, input_name = ['0219', '0224', 'both','0225'], step_A = 5, i
 datasets = []
 input_names = []
 for i in range(7):
+    try:
+        grade_i = select_ores_greedy(data, 200, i+1)
+        assert grade_i.index.is_unique, "选中的矿石索引重复！"
 
-    grade_i = select_ores_greedy(data, 100, i+1)
+        index = grade_i.index.values
+        input_i= [[pixels[0][index], pixels[1][index]], data.loc[index]]
+        datasets.append(input_i)
+        input_names.append('MG_%s'%(i+1))
 
-    index = grade_i.index.values
-    input_i= [[pixels[0][index], pixels[1][index]], data.loc[index]]
+    except:
+        print('Problem met in grade %s'%(i+1))
+        continue
 
-    datasets.append(input_i)
-    input_names.append('MG_%s'%(i+1))
-
-with open('20250422_7_mean_grade_data_v2.pkl', 'wb') as f:
+with open('20250422_7_mean_grade_data_200.pkl', 'wb') as f:
     pickle.dump(datasets, f) 
 
 res_all = tune(datasets, input_name = input_names, step_A = 1)
 
-with open('20250422_results_7_mean_grade_data.pkl', 'wb') as f:
+with open('20250422_results_7_mean_grade_data_200.pkl', 'wb') as f:
     pickle.dump(res_all, f) 
 
 # with open ('results.pkl', 'rb') as f:
