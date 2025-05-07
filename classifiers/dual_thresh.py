@@ -53,7 +53,9 @@ class DualThreshClassifier(BaseClassifier):
             min_scrap_rate = None,
             A_range = np.arange(0, 256, 5), 
             step_B: float = 0.05, 
-            grade_real_th = None
+            grade_real_th = None, 
+            score_on = False,
+            score_weight = 'weight'
     ):
         """
         调优超参数以找到基于指定约束条件的最佳“灰度阈值”和“比例阈值”。
@@ -103,11 +105,33 @@ class DualThreshClassifier(BaseClassifier):
 
                 # 计算准确率等
                 true_labels = (self.pb_zn_fe >= grade_real_th).astype(int)
-                accuracy = accuracy_score(true_labels, predictions)
-                # precision = precision_score(true_labels, predictions, zero_division=0)
-                # recall = recall_score(true_labels, predictions, zero_division=0)
-                # f1 = f1_score(true_labels, predictions, zero_division=0)
 
+                if score_on == True:
+
+                    if score_weight == True:
+                        accuracy_weight = accuracy_score(true_labels, predictions, sample_weight=self.weight)
+                        precision_weight = precision_score(true_labels, predictions, sample_weight=self.weight, zero_division=0)
+                        recall_weight = recall_score(true_labels, predictions, sample_weight=self.weight, zero_division=0)
+
+                        accuracy_grade = accuracy_score(true_labels, predictions, sample_weight=self.y)
+                        precision_grade = precision_score(true_labels, predictions, sample_weight=self.y, zero_division=0)
+                        recall_grade = recall_score(true_labels, predictions, sample_weight=self.y, zero_division=0)
+
+                        accuracy = precision = recall = 0
+
+                    else:
+                        accuracy = accuracy_score(true_labels, predictions)
+                        precision = precision_score(true_labels, predictions, zero_division=0)
+                        recall = recall_score(true_labels, predictions, zero_division=0)
+
+                        accuracy_weight = precision_weight = recall_weight = 0
+                        accuracy_grade = precision_grade = recall_grade = 0
+
+                else:
+                    accuracy = accuracy_weight = accuracy_grade = 0
+                    precision = precision_weight = precision_grade = 0
+                    recall = recall_weight = recall_grade = 0
+                    
                 # 记录调优结果，包括品位阈值
                 self.tuning_results.append({
                     'threshold_A': I_th,
@@ -118,8 +142,14 @@ class DualThreshClassifier(BaseClassifier):
                     '铅富集比': tuning_metrics['铅富集比'],
                     '锌富集比': tuning_metrics['锌富集比'],            
                     '准确率': accuracy,
-                    # '精确率': precision,
-                    # '召回率': recall,
+                    '精确率': precision,
+                    '召回率': recall,
+                    '准确率_重量': accuracy_weight,
+                    '精确率_重量': precision_weight,
+                    '召回率_重量': recall_weight,
+                    '准确率_品位': accuracy_grade,
+                    '精确率_品位': precision_grade,
+                    '召回率_品位': recall_grade,
                     # 'F1 分数': f1
     
                 })
