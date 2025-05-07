@@ -63,7 +63,9 @@ class RMethodClassifier(BaseClassifier):
                A_range = np.arange(0.5, 1.2, 0.01), 
                step_B= 0.05,
                mean_range = None,
-               grade_real_th = None):
+               grade_real_th = None,
+               score_on = False,
+               score_weight = False):
         
         '''
         For now, just call the tuning method of DualThreshClassifier.
@@ -72,11 +74,11 @@ class RMethodClassifier(BaseClassifier):
         if mean_range is None:
             test = DualThreshClassifier(truth = self.truth, pixels= self.R_pixels, pixel_kind= 'R', include_Fe=self.include_Fe)
             test.tuning(min_recovery_rate=min_recovery_rate, min_scrap_rate=min_scrap_rate, A_range=A_range, step_B=step_B, 
-                    grade_real_th=grade_real_th)        
+                    grade_real_th=grade_real_th, score_on=score_on, score_weight=score_weight)        
         else:
             test = ParallelClassifier(truth = self.truth, pixels= self.R_pixels, pixel_kind= 'R', include_Fe=self.include_Fe)
             test.tuning(min_recovery_rate=min_recovery_rate, min_scrap_rate=min_scrap_rate, A_range=A_range, step_B=step_B, 
-                    mean_range = mean_range, grade_real_th=grade_real_th)
+                    mean_range = mean_range, grade_real_th=grade_real_th, score_on=score_on, score_weight=score_weight)
         
         # 完全替换实例为test（包括方法和属性）
         self.__class__ = test.__class__
