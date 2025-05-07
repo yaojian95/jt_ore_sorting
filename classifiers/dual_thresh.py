@@ -55,7 +55,7 @@ class DualThreshClassifier(BaseClassifier):
             step_B: float = 0.05, 
             grade_real_th = None, 
             score_on = False,
-            score_weight = 'weight'
+            score_weight = False
     ):
         """
         调优超参数以找到基于指定约束条件的最佳“灰度阈值”和“比例阈值”。
@@ -107,6 +107,10 @@ class DualThreshClassifier(BaseClassifier):
                 true_labels = (self.pb_zn_fe >= grade_real_th).astype(int)
 
                 if score_on == True:
+                    
+                    accuracy = accuracy_score(true_labels, predictions)
+                    precision = precision_score(true_labels, predictions, zero_division=0)
+                    recall = recall_score(true_labels, predictions, zero_division=0)
 
                     if score_weight == True:
                         accuracy_weight = accuracy_score(true_labels, predictions, sample_weight=self.weight)
@@ -117,12 +121,7 @@ class DualThreshClassifier(BaseClassifier):
                         precision_grade = precision_score(true_labels, predictions, sample_weight=self.y, zero_division=0)
                         recall_grade = recall_score(true_labels, predictions, sample_weight=self.y, zero_division=0)
 
-                        accuracy = precision = recall = 0
-
                     else:
-                        accuracy = accuracy_score(true_labels, predictions)
-                        precision = precision_score(true_labels, predictions, zero_division=0)
-                        recall = recall_score(true_labels, predictions, zero_division=0)
 
                         accuracy_weight = precision_weight = recall_weight = 0
                         accuracy_grade = precision_grade = recall_grade = 0
