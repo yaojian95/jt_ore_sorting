@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 plt.rcParams['font.sans-serif'] = ['Arial Unicode MS'] 
 
 import pickle
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 from multiprocessing import get_context
 
 current_dir = os.getcwd()
@@ -27,18 +27,18 @@ from classifiers.demo import Demo
 # print('Success')
 # exit()
 
-def _tune_single_algorithm(input, algorithm_class, params, tuning_params):
-    """单个算法的调优函数"""
+def _tune_single_algorithm(input_tuple):
+    """封装为接受一个参数的函数以用于 multiprocessing"""
+    input, algorithm_class, params, tuning_params = input_tuple
     classifier = algorithm_class(**params)
-    classifier.tuning(min_recovery_rate=0.95, min_scrap_rate=0.2, **tuning_params)
+    classifier.tuning(min_recovery_rate=0.95, min_scrap_rate=0.2, score_on=True, score_weight=True, **tuning_params)
     return classifier
 
-def tune(input_list, input_name = ['0219', '0224', 'both'], step_A = 5, include_Fe=False):
+def tune(input_list, input_name=['0219', '0224', 'both'], step_A=5, include_Fe=False):
     m_name = ['dual_low', 'dual_high', 'R']
-    res = {}
-    
+    tasks = []
+
     for i, input in enumerate(input_list):
-        # 定义每个算法的参数
         algorithms_params = [
             {
                 'pixels': input[0][0],
@@ -63,7 +63,6 @@ def tune(input_list, input_name = ['0219', '0224', 'both'], step_A = 5, include_
             }
         ]
 
-        # 定义每个算法的调优参数
         tuning_params = [
             {
                 'A_range': np.arange(0, 256, step_A),
@@ -82,35 +81,34 @@ def tune(input_list, input_name = ['0219', '0224', 'both'], step_A = 5, include_
             }
         ]
 
-        # 创建进程池并行执行
-        with get_context('spawn').Pool(processes=4) as pool:
-            results = pool.starmap(_tune_single_algorithm, [
-                (input, DualThreshClassifier, algorithms_params[0], tuning_params[0]),
-                (input, DualThreshClassifier, algorithms_params[1], tuning_params[1]),
-                (input, RMethodClassifier, algorithms_params[2], tuning_params[2])
-            ])
+        task_set = [
+            (input, DualThreshClassifier, algorithms_params[0], tuning_params[0]),
+            (input, DualThreshClassifier, algorithms_params[1], tuning_params[1]),
+            (input, RMethodClassifier, algorithms_params[2], tuning_params[2])
+        ]
+        tasks.extend(task_set)
 
-        # 处理结果
+    # 并行运行所有任务
+    # with get_context('spawn').Pool(processes=os.cpu_count()) as pool:
+    with Pool(processes=cpu_count()) as pool:
+        results = pool.map(_tune_single_algorithm, tasks)
 
-        res_save = []
-        for j, result in enumerate(results):
+    # 组织结果
+    res_all = []
+    for i in range(len(input_list)):
+        res_input = []
+        for j in range(3):  # 3种算法
+            idx = i * 3 + j
+            classifier = results[idx]
+            res, log = Demo(classifier).report_rates()
+            print(f"[{input_name[i]} - {m_name[j]}] {log}")
+            res_input.append(classifier.tuning_results)
+        res_all.append(res_input)
 
-            res, log = Demo(result).report_rates()
-            print(log)
-            res_save.append(result.tuning_results)
+    return res_all
+  
 
-            # if len(method.best_params) == 3:
-            #     params = {'grayness_th': method.best_params[0], 'ratio_th': method.best_params[1], 'mean_th': method.best_params[2]}
-            # else:
-            #     params = {'grayness_th': method.best_params[0], 'ratio_th': method.best_params[1]}
-
-            # params.update(method.best_metrics)
-            # res[input_name[i] + '_' + m_name[j]] = params
-        
-
-    return res_save     
-
-with open('input_0219_0224_0225_0226_0227_contour_th_128', 'rb') as f:
+with open('/home/yaojian/data/input_0219_0224_0225_0226_0227_contour_th_128.pkl', 'rb') as f:
     input_all = pickle.load(f)
 pixels = input_all[0]
 data = input_all[1]
