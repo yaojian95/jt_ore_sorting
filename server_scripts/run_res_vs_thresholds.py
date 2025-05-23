@@ -67,17 +67,17 @@ def tune(input_list, input_name=['0219', '0224', 'both'], step_A=5, include_Fe=F
             {
                 'A_range': np.arange(0, 256, step_A),
                 'step_B': 0.05,
-                'grade_real_th': 0.1
+                'grade_real_th': 0.025
             },
             {
                 'A_range': np.arange(0, 256, step_A),
                 'step_B': 0.05,
-                'grade_real_th': 0.1
+                'grade_real_th': 0.025
             },
             {
                 'A_range': np.arange(0.5, 1.2, 0.01),
                 'step_B': 0.05,
-                'grade_real_th': 0.1
+                'grade_real_th': 0.025
             }
         ]
 
@@ -121,7 +121,7 @@ for t in range(5):
 
 res_all = tune(dates, input_name = ['0219', '0224', '0225', '0226', '0227'], step_A = 1)
 
-with open('20250507_results_vs_thresholds.pkl', 'wb') as f:
+with open('20250507_results_vs_thresholds_2.5.pkl', 'wb') as f:
     pickle.dump(res_all, f) 
 
 # with open ('results.pkl', 'rb') as f:

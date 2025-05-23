@@ -105,8 +105,7 @@ class DualThreshClassifier(BaseClassifier):
                     grade_threshold = (low_grade_max + high_grade_min) / 2
 
                 # 计算准确率等
-                # if np.isscalar(grade_real_th):
-                true_labels = (self.y >= grade_real_th).astype(int)
+                true_labels = (self.pb_zn_fe >= grade_real_th).astype(int)
 
                 if score_on == True:
                     
