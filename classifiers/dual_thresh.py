@@ -55,7 +55,8 @@ class DualThreshClassifier(BaseClassifier):
             step_B: float = 0.05, 
             grade_real_th = None, 
             score_on = False,
-            score_weight = False
+            score_weight = False,
+            check_metrics = True
     ):
         """
         调优超参数以找到基于指定约束条件的最佳“灰度阈值”和“比例阈值”。
@@ -104,6 +105,7 @@ class DualThreshClassifier(BaseClassifier):
                     grade_threshold = (low_grade_max + high_grade_min) / 2
 
                 # 计算准确率等
+                # if np.isscalar(grade_real_th):
                 true_labels = (self.y >= grade_real_th).astype(int)
 
                 if score_on == True:
@@ -152,42 +154,50 @@ class DualThreshClassifier(BaseClassifier):
                     # 'F1 分数': f1
     
                 })
+                
+                if check_metrics == False:
+                    continue
+                    
+                else:
 
-                # 检查是否满足约束条件
-                meets_recovery = True
-                meets_scrap = True
+                    # 检查是否满足约束条件
+                    meets_recovery = True
+                    meets_scrap = True
 
-                if min_recovery_rate is not None and tuning_metrics['回收率'] < min_recovery_rate:
-                    meets_recovery = False
-                if min_scrap_rate is not None and tuning_metrics['抛废率'] < min_scrap_rate:
-                    meets_scrap = False
+                    if min_recovery_rate is not None and tuning_metrics['回收率'] < min_recovery_rate:
+                        meets_recovery = False
+                    if min_scrap_rate is not None and tuning_metrics['抛废率'] < min_scrap_rate:
+                        meets_scrap = False
 
-                if (min_recovery_rate is None or meets_recovery) and (min_scrap_rate is None or meets_scrap):
-                    # 定义优化分数
-                    if min_recovery_rate is not None and min_scrap_rate is not None:
-                        current_score = tuning_metrics['回收率'] + tuning_metrics['抛废率']
-                    elif min_recovery_rate is not None:
-                        current_score = tuning_metrics['抛废率']
-                    elif min_scrap_rate is not None:
-                        current_score = tuning_metrics['回收率']
-                    else:
-                        current_score = tuning_metrics['回收率'] + tuning_metrics['抛废率']
+                    if (min_recovery_rate is None or meets_recovery) and (min_scrap_rate is None or meets_scrap):
+                        # 定义优化分数
+                        if min_recovery_rate is not None and min_scrap_rate is not None:
+                            current_score = tuning_metrics['回收率'] + tuning_metrics['抛废率']
+                        elif min_recovery_rate is not None:
+                            current_score = tuning_metrics['抛废率']
+                        elif min_scrap_rate is not None:
+                            current_score = tuning_metrics['回收率']
+                        else:
+                            current_score = tuning_metrics['回收率'] + tuning_metrics['抛废率']
 
-                    # 如果当前分数更高，则更新最佳参数
-                    if current_score > best_score:
-                        best_score = current_score
-                        tuning_metrics.update({'准确率': accuracy})
-                        best_metrics = tuning_metrics
-                        best_params = (I_th, ratio_th)
-                        self.best_under_constraints = (I_th, ratio_th, best_metrics)
+                        # 如果当前分数更高，则更新最佳参数
+                        if current_score > best_score:
+                            best_score = current_score
+                            tuning_metrics.update({'准确率': accuracy})
+                            best_metrics = tuning_metrics
+                            best_params = (I_th, ratio_th)
+                            self.best_under_constraints = (I_th, ratio_th, best_metrics)
 
-        # 将调优结果列表转换为 DataFrame
         self.tuning_results = pd.DataFrame(self.tuning_results)
-
-        # 计算 Pareto 前沿
-        self.pareto_front = self._compute_pareto_front(self.tuning_results)
-        self.best_params = best_params
-        self.best_metrics = best_metrics
+        
+        if check_metrics == False:
+            return
+        
+        else:
+            # 计算 Pareto 前沿
+            self.pareto_front = self._compute_pareto_front(self.tuning_results)
+            self.best_params = best_params
+            self.best_metrics = best_metrics
 
         # return best_params, best_metrics
     
