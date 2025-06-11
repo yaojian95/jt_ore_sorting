@@ -20,6 +20,7 @@ class BaseClassifier(ABC):
 
             self.avg_pb_grade_all = np.average(self.pb_grade, weights=self.weight)
             self.avg_zn_grade_all = np.average(self.zn_grade, weights=self.weight)
+            self.avg_fe_grade_all = np.average(self.fe_grade, weights=self.weight)
 
             if not include_Fe:
                 self.y = self.pb_grade + self.zn_grade  # 综合品位
@@ -82,19 +83,18 @@ class BaseClassifier(ABC):
         avg_zn_grade_high = self.safe_average(self.zn_grade[high_grade_mask], weights=self.weight[high_grade_mask])
         avg_pb_grade_low = self.safe_average(self.pb_grade[low_grade_mask], weights=self.weight[low_grade_mask])
         avg_zn_grade_low = self.safe_average(self.zn_grade[low_grade_mask], weights=self.weight[low_grade_mask])
+        avg_fe_grade_low = self.safe_average(self.fe_grade[low_grade_mask], weights=self.weight[low_grade_mask])
+        avg_fe_grade_high = self.safe_average(self.fe_grade[high_grade_mask], weights=self.weight[high_grade_mask])
 
         enrichment_Pb = avg_pb_grade_high / self.avg_pb_grade_all if self.avg_pb_grade_all != 0 else 0
         enrichment_Zn = avg_zn_grade_high / self.avg_zn_grade_all if self.avg_zn_grade_all != 0 else 0
 
         return {
-            '抛废率': scrap_rate,
-            '回收率': recovery_rate,
-            '铅富集比': enrichment_Pb,
-            '锌富集比': enrichment_Zn,
-            '铅平均品位（保留）': avg_pb_grade_high,
-            '锌平均品位（保留）': avg_zn_grade_high,
-            '铅平均品位（抛废）': avg_pb_grade_low,
-            '锌平均品位（抛废）': avg_zn_grade_low,
-            '铅平均品位': self.avg_pb_grade_all,
-            '锌平均品位': self.avg_zn_grade_all,
+            '抛废率': '{:.2f}%'.format(scrap_rate*100),
+            '回收率': '{:.2f}%'.format(recovery_rate*100),
+            '铅富集比': '{:.2f}'.format(enrichment_Pb),
+            '锌富集比': '{:.2f}'.format(enrichment_Zn),
+            '铅、锌、铁平均品位（所有）': '{:.2f}%, {:.2f}%, {:.2f}%'.format(self.avg_pb_grade_all*100, self.avg_zn_grade_all*100, self.avg_fe_grade_all*100),
+            '铅、锌、铁平均品位（保留）': '{:.2f}%, {:.2f}%, {:.2f}%'.format(avg_pb_grade_high*100, avg_zn_grade_high*100, avg_fe_grade_high*100),
+            '铅、锌、铁平均品位（抛废）': '{:.2f}%, {:.2f}%, {:.2f}%'.format(avg_pb_grade_low*100, avg_zn_grade_low*100, avg_fe_grade_low*100),
         }
