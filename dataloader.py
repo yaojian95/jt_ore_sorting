@@ -70,10 +70,10 @@ def path2pixel(path, roi, max_len = 6, length = 100, s_i = 0, direction = 'ublr'
         # 先选择感兴趣区域
         # X射线探测器成像与实际矿石摆放位置（俯视）差180°且左右相反
         # 等效为沿着垂直方向翻转
-        low_contoured, rock_pixels, contours = get_contours(low_roi, high_roi, th_val = th_val, max_len = max_len, length=length, 
+        low_contoured, rock_pixels, contours, rock_images = get_contours(low_roi, high_roi, th_val = th_val, max_len = max_len, length=length, 
                                               direction = direction, path = path, s_i = s_i, save_rock_image=save_rock_image)
 
-        pre_combined = low_roi, high_roi, rock_pixels, low_contoured, contours
+        pre_combined = low_roi, high_roi, rock_pixels, low_contoured, contours, rock_images
     
     elif list_depth(roi) == 2:
 
@@ -85,10 +85,10 @@ def path2pixel(path, roi, max_len = 6, length = 100, s_i = 0, direction = 'ublr'
             y1, y2, x1, x2 = roi[p]
             low_roi, high_roi = cv2.flip(low[y1:y2, x1:x2], 0), cv2.flip(high[y1:y2, x1:x2], 0)
             # print(low)
-            low_contoured, rock_pixels, contours = get_contours(low_roi, high_roi, th_val = th_val, max_len = max_len[p], length=length[p], 
+            low_contoured, rock_pixels, contours, rock_images = get_contours(low_roi, high_roi, th_val = th_val, max_len = max_len[p], length=length[p], 
                                               direction = direction, path = path, s_i = s_i[p], save_rock_image=save_rock_image)
 
-            pre.append([low_roi, high_roi, rock_pixels, low_contoured, contours])
+            pre.append([low_roi, high_roi, rock_pixels, low_contoured, contours, rock_images])
         
         pre_combined =[append_generic(pre[1][i], pre[0][i]) for i in range(len(pre[0]))]
 

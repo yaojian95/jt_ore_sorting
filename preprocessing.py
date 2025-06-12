@@ -123,16 +123,21 @@ def get_contours(low, high, th_val = 100, max_len = 6, length = 100, direction =
         # low_rock_images = []
         # high_rock_images = []
         rock_pixels = [[], []]
+        rock_images = [[], []]
         for i in range(len(contours)):
                 contour = contours[i]
                 # low_rock_images.append(get_contour_box_image(low, contour, margin=10))
                 # high_rock_images.append(get_contour_box_image(high, contour, margin=10))
                 rock_pixels[0].append(get_contour_pixels(low, contour))
                 rock_pixels[1].append(get_contour_pixels(high, contour))
+
+                rock_images[0].append(get_contour_box_image(low, contour, margin=5))
+                rock_images[1].append(get_contour_box_image(high, contour, margin=5))
+
                 if save_rock_image:
                     cv2.imwrite(path.parent/('rocks/%s_%s_low.png'%(path.stem, s_i + i)), get_contour_box_image(low, contour, margin=10))
                     cv2.imwrite(path.parent/('rocks/%s_%s_high.png'%(path.stem, s_i + i)), get_contour_box_image(high, contour, margin=10))
-        return low_contoured, rock_pixels, contours
+        return low_contoured, rock_pixels, contours, rock_images
 
 def draw_contours_yao(image, contours, color=(0, 0, 255), thickness=2, max_len = 6, 
                       length = 100, show= 'index', indexes=None, direction = 'ublr', grade = None):
