@@ -3,7 +3,40 @@ import numpy as np
 import argparse
 import os
 
+def stack_tif(data_path, height_factor):
+    '''
+    Walking through all the subfolders and stack all the tif in that subfolder to images 
+    '''
+
+    for root, dirs, files in os.walk(data_path):
+        image_data = []
+        if len(files) > 1:
+            # print(files)
+            files.sort()
+            print(files)
+
+            for file in files:
+                if file.lower().endswith('.tif'):
+                #     print(root.split('/')[-1], file)
+                    img_path = os.path.join(root, file)
+                    img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
+                    image_data.append(img)
+                    
+            if len(image_data) != 0:
+                stacked_image = np.concatenate(image_data, axis=0)
+
+                height, width = stacked_image.shape[:2]
+                new_height = height // height_factor
+                new_size = (width, new_height)
+                resized_img = cv2.resize(stacked_image, new_size, interpolation=cv2.INTER_LINEAR)
+
+                cv2.imwrite(os.path.join(root, '%s.png'%(root.split('/')[-1])), resized_img)    
+
 def stack_images(folder_path, start_idx=None, end_idx=None, prefix=3):
+    '''
+    stack cettain tifs into images 
+    '''
+    
     files = [f for f in os.listdir(folder_path) if f.endswith('.tif')]
     files.sort(key=lambda x: int(x.split('.')[0][prefix:]))
     image_data = []
