@@ -3,20 +3,24 @@ import numpy as np
 import argparse
 import os
 
-def stack_tif(data_path, height_factor):
+def stack_tif(data_path, height_factor, max_depth=1):
     '''
     Walking through all the subfolders and stack all the tif in that subfolder to images 
     '''
-
-    for root, dirs, files in os.walk(data_path):
+    for root, dirs, files in os.walk(data_path, topdown=True):
+        # 计算当前深度
+        current_depth = root[len(data_path):].count(os.sep)
+        if current_depth >= max_depth:
+            # 清空子目录列表，停止继续深入
+            dirs[:] = []
+        
         image_data = []
         if len(files) > 1:
-            # print(files)
             files.sort()
             print(files)
 
             for file in files:
-                if file.lower().endswith('.tif'):
+                if file.lower().endswith(('.tif', '.png')):
                 #     print(root.split('/')[-1], file)
                     img_path = os.path.join(root, file)
                     img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
