@@ -44,9 +44,9 @@ def calculate_recovery_rates(concentrate_mass, concentrate_grade,
 
 if __name__ == "__main__":
     # 示例数据
-    concentrate_mass = 38.1   
+    concentrate_mass = 34.8 
     concentrate_grade = 1.924+0.737 
-    tailings_mass = 13.4     
+    tailings_mass = 14.4     
     tailings_grade = 0.477 + 0.257  
     
     # 计算结果(不提供原矿品位，自动计算)
