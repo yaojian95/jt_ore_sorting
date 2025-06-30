@@ -114,14 +114,15 @@ pixels = input_all[0]
 data = input_all[1]
 
 dates = []
-for t in range(5):
+for t in [1, 3, 4]:
     index_0219 = data.loc[data['source'] == 'source_%s'%t].index.values
     input_0219 = [[pixels[0][index_0219], pixels[1][index_0219]], data.loc[index_0219]]
     dates.append(input_0219)   
 
-res_all = tune(dates, input_name = ['0219', '0224', '0225', '0226', '0227'], step_A = 1)
+input_names = ['0219', '0224', '0225', '0226', '0227']
+res_all = tune(dates, input_name = ['0224', '0226', '0227'], step_A = 1)
 
-with open('20250507_results_vs_thresholds_2.5.pkl', 'wb') as f:
+with open('20250530_results_vs_thresholds_2.5_24_26_27.pkl', 'wb') as f:
     pickle.dump(res_all, f) 
 
 # with open ('results.pkl', 'rb') as f:
