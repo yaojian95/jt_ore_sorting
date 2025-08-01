@@ -46,7 +46,7 @@ def split_dual_xray_image(image, offset_up=0, offset_down=0):
 
     return low_power_image, high_power_image
 
-def path2pixel(path, roi, max_len = 6, length = 100, s_i = 0, direction = 'ublr', th_val = 105,
+def path2pixel(path, roi, max_len = 6, length = 100, s_i = 0, direction = 'ublr', flip_hori = True, th_val = 105,
                 save_rock_image = False, save_rock_pixels = False):
     '''
 
@@ -66,7 +66,11 @@ def path2pixel(path, roi, max_len = 6, length = 100, s_i = 0, direction = 'ublr'
 
     if list_depth(roi) == 1:
         y1, y2, x1, x2 = roi
-        low_roi, high_roi = cv2.flip(low[y1:y2, x1:x2], 0), cv2.flip(high[y1:y2, x1:x2], 0) 
+
+        if flip_hori:
+            low_roi, high_roi = cv2.flip(low[y1:y2, x1:x2], 0), cv2.flip(high[y1:y2, x1:x2], 0) 
+        else:
+            low_roi, high_roi = low[y1:y2, x1:x2], high[y1:y2, x1:x2]
         # 先选择感兴趣区域
         # X射线探测器成像与实际矿石摆放位置（俯视）差180°且左右相反
         # 等效为沿着垂直方向翻转
@@ -83,7 +87,10 @@ def path2pixel(path, roi, max_len = 6, length = 100, s_i = 0, direction = 'ublr'
 
         for p in range(len(roi)):
             y1, y2, x1, x2 = roi[p]
-            low_roi, high_roi = cv2.flip(low[y1:y2, x1:x2], 0), cv2.flip(high[y1:y2, x1:x2], 0)
+            if flip_hori:
+                low_roi, high_roi = cv2.flip(low[y1:y2, x1:x2], 0), cv2.flip(high[y1:y2, x1:x2], 0)
+            else:
+                low_roi, high_roi = low[y1:y2, x1:x2], high[y1:y2, x1:x2]
             # print(low)
             low_contoured, rock_pixels, contours, rock_images = get_contours(low_roi, high_roi, th_val = th_val, max_len = max_len[p], length=length[p], 
                                               direction = direction, path = path, s_i = s_i[p], save_rock_image=save_rock_image)

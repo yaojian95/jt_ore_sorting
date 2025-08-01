@@ -164,6 +164,9 @@ class DualThreshClassifier(BaseClassifier):
                     meets_recovery = True
                     meets_scrap = True
 
+                    tuning_metrics['回收率'] = float(tuning_metrics['回收率'][:-1])
+                    tuning_metrics['抛废率'] = float(tuning_metrics['抛废率'][:-1])
+
                     if min_recovery_rate is not None and tuning_metrics['回收率'] < min_recovery_rate:
                         meets_recovery = False
                     if min_scrap_rate is not None and tuning_metrics['抛废率'] < min_scrap_rate:
@@ -217,8 +220,8 @@ class DualThreshClassifier(BaseClassifier):
         current_max_scrap = -np.inf
 
         for _, row in df_sorted.iterrows():
-            if row['抛废率'] > current_max_scrap:
+            if float(row['抛废率'][:-1]) > current_max_scrap:
                 pareto_front.append(row)
-                current_max_scrap = row['抛废率']
+                current_max_scrap = float(row['抛废率'][:-1])
 
         return pd.DataFrame(pareto_front)

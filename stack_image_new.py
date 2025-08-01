@@ -59,14 +59,14 @@ def main():
     parser = argparse.ArgumentParser(description='Stack TIFF images vertically')
     parser.add_argument('date', help='Experiment date in YYYYMMDD format')
     parser.add_argument('para', help='Experiment parameters')
-    parser.add_argument('start_index', type=int, help='Start image index')
-    parser.add_argument('end_index', type=int, help='End image index')
+    parser.add_argument('--start_index', type=int, help='Start image index')
+    parser.add_argument('--end_index', type=int, help='End image index')
     
     args = parser.parse_args()
 
-    base_dir = os.path.join("E:/luoyihan", args.date, args.para)
+    base_dir = os.path.join("/Users/zhengyun/Desktop/yaojian/data/20250905_150块铜矿石/") # args.date, args.para
     input_folder = os.path.join(base_dir, "Images")
-    output_path = os.path.join(base_dir, f"{args.para}.png")
+    output_path = os.path.join(base_dir, f"Cu_.png")
 
     stacked_image = stack_images(input_folder, args.start_index, args.end_index)
     cv2.imwrite(output_path, stacked_image)
