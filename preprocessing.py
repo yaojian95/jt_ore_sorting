@@ -8,6 +8,41 @@ import numpy as np
 import cv2
 from pathlib import Path
 
+def shrink_contours(contours, scale):
+    """
+    缩小轮廓（保持中心点不变，按比例缩放）
+    
+    Args:
+        contours (list): 输入的轮廓列表（如 cv2.findContours 的输出）
+        scale (float): 缩放比例（0 < scale < 1 缩小，scale > 1 放大）
+    
+    Returns:
+        list: 缩放后的新轮廓
+    """
+    shrunk_contours = []
+    
+    for contour in contours:
+        # 计算轮廓的矩，获取中心点 (cx, cy)
+        M = cv2.moments(contour)
+        if M["m00"] == 0:  # 避免除以0（理论上轮廓不应出现）
+            continue
+        cx = int(M["m10"] / M["m00"])
+        cy = int(M["m01"] / M["m00"])
+        
+        # 归一化坐标（减去中心）
+        contour_norm = contour.astype(np.float32) - np.array([cx, cy])
+        
+        # 缩放坐标
+        contour_scaled = contour_norm * scale
+        
+        # 恢复绝对坐标（加回中心）
+        contour_shrunk = contour_scaled + np.array([cx, cy])
+        contour_shrunk = contour_shrunk.astype(np.int32)
+        
+        shrunk_contours.append(contour_shrunk)
+    
+    return shrunk_contours
+
 def contour_detection(image,
                       th_val=185,
                       min_contour_area=50,
@@ -19,7 +54,9 @@ def contour_detection(image,
                       min_rect_ratio=None,
                       max_rect_ratio=None,
                       roi=None,
-                      rescale_factor=1.0):
+                      rescale_factor=1.0,
+                      shrink_scale=1.0):
+
     """
     Detects contours in an image using binary thresholding and filters them based on the specified criteria.
     Supports detecting contours within a specified Region of Interest (ROI) while keeping all parameters
@@ -95,6 +132,10 @@ def contour_detection(image,
                  (max_rect_ratio is None or ratio <= max_rect_ratio) ):
                 filtered_contours.append(cnt)
 
+    # Shrink contours
+    if shrink_scale != 1.0:
+        filtered_contours = shrink_contours(filtered_contours, shrink_scale)
+
     return filtered_contours
 
 def get_contour_pixels(image, contour):
@@ -112,11 +153,14 @@ def get_contour_box_image(image, contour, margin=10):
                 max(xywh[0] - margin, 0):xywh[0] + xywh[2] + margin]
     return box_image
 
-def get_contours(low, high, th_val = 100, max_len = 6, length = 100, direction = 'ublr', path = '', s_i = 0, save_rock_image = False):
+def get_contours(low, high, th_val = 100, max_len = 6, length = 100, direction = 'ublr', path = '', s_i = 0, 
+                 shrink_scale = 1.0, save_rock_image = False):
+
         
         path = Path(path)
 
-        _contours = contour_detection(low, roi=(None, None, None, None), th_val=th_val)
+        _contours = contour_detection(low, roi=(None, None, None, None), th_val=th_val, shrink_scale=shrink_scale)
+
         
         low_contoured, contours = draw_contours_yao(low, _contours, thickness=2, show = 'index', max_len=max_len, length=length,
                                           indexes=s_i + np.arange(len(_contours)), direction=direction)

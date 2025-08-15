@@ -47,7 +47,8 @@ def split_dual_xray_image(image, offset_up=0, offset_down=0):
     return low_power_image, high_power_image
 
 def path2pixel(path, roi, max_len = 6, length = 100, s_i = 0, direction = 'ublr', flip_hori = True, th_val = 105,
-                save_rock_image = False, save_rock_pixels = False):
+                reshape_factor = 1, save_rock_image = False, save_rock_pixels = False, shrink_scale = 1.0):
+
     '''
 
     Returns:
@@ -55,7 +56,10 @@ def path2pixel(path, roi, max_len = 6, length = 100, s_i = 0, direction = 'ublr'
     low, high, rock_pixels, low_contoured, contours
     '''
     
-    image = cv2.imread(path, cv2.IMREAD_GRAYSCALE) 
+    image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+    if reshape_factor != 1:  
+        image = cv2.resize(image, (int(image.shape[1]), int(image.shape[0]/reshape_factor)), interpolation=cv2.INTER_LINEAR)
+
     # cv2.IMREAD_GRAYSCALE 或 0， 转换为0-255的灰度图
     # cv2.IMREAD_COLOR 或 1，转换为3通道的彩色图
     # cv2.IMREAD_UNCHANGED 或 -1， 保持原来的不变
@@ -75,7 +79,7 @@ def path2pixel(path, roi, max_len = 6, length = 100, s_i = 0, direction = 'ublr'
         # X射线探测器成像与实际矿石摆放位置（俯视）差180°且左右相反
         # 等效为沿着垂直方向翻转
         low_contoured, rock_pixels, contours, rock_images = get_contours(low_roi, high_roi, th_val = th_val, max_len = max_len, length=length, 
-                                              direction = direction, path = path, s_i = s_i, save_rock_image=save_rock_image)
+                                              direction = direction, path = path, s_i = s_i, save_rock_image=save_rock_image, shrink_scale=shrink_scale)
 
         pre_combined = low_roi, high_roi, rock_pixels, low_contoured, contours, rock_images
     
@@ -93,7 +97,8 @@ def path2pixel(path, roi, max_len = 6, length = 100, s_i = 0, direction = 'ublr'
                 low_roi, high_roi = low[y1:y2, x1:x2], high[y1:y2, x1:x2]
             # print(low)
             low_contoured, rock_pixels, contours, rock_images = get_contours(low_roi, high_roi, th_val = th_val, max_len = max_len[p], length=length[p], 
-                                              direction = direction, path = path, s_i = s_i[p], save_rock_image=save_rock_image)
+                                              direction = direction, path = path, s_i = s_i[p], save_rock_image=save_rock_image, shrink_scale=shrink_scale)
+
 
             pre.append([low_roi, high_roi, rock_pixels, low_contoured, contours, rock_images])
         
